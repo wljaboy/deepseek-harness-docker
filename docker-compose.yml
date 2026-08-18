@@ -1,0 +1,23 @@
+services:
+  deepseek-harness:
+    # 本地构建/导入的镜像（推荐，无需访问外网）
+    image: kanzuori197/deepseek-harness-nas:0.1.0-rc.6-cn
+    # 也可直接使用国内加速拉取的官方镜像：
+    # image: ghcr.nju.edu.cn/kanzuori197/deepseek-harness-nas:0.1.0-rc.6
+    container_name: deepseek-harness
+    restart: unless-stopped
+    shm_size: 1gb
+    ports:
+      - "8443:8443"
+    environment:
+      HTTPS_ACCESS_HOST: "${HTTPS_ACCESS_HOST}"
+      DSH_AUTH_USERNAME: "${DSH_AUTH_USERNAME}"
+      DSH_AUTH_PASSWORD: "${DSH_AUTH_PASSWORD}"
+      DSH_TELEMETRY_DISABLED: "1"
+      # 可选：容器内 git clone GitHub 加速（不填则使用默认行为）
+      # GH_PROXY: "https://ghfast.top/"
+      # 可选：容器内 npm 镜像源覆盖（默认已内置 npmmirror）
+      # NPM_REGISTRY: "https://registry.npmmirror.com"
+    volumes:
+      - "${DSH_DATA_PATH}:/data/dsh"
+      - "${WORKSPACE_PATH}:/workspace"
