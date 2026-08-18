@@ -119,7 +119,30 @@ DSH_VERSION=0.1.0-rc.8 ./scripts/build.sh --save
 
 DSH 插件可能需要编译原生模块（node-gyp），完整版自带编译工具链，与官方镜像一致。
 
-## 构建来源
+## 构建来源（来源链说明）
 
-镜像从 npm 官方包 `@deepseek-ai/dsh` 构建，基础镜像为官方 `node:22-bookworm`，
-Caddy 二进制与官方镜像完全一致（v2.10.2），不依赖第三方封装镜像。
+```
+deepseek-ai/deepseek-harness（官方源码仓库，不提供 Docker 镜像）
+        | 官方发布
+        v
+@deepseek-ai/dsh（官方 npm 包）-- 本镜像的 DeepSeek Harness 本体
+        | 社区 NAS 封装（仅借鉴部署壳设计）
+        v
+kanzuori197/deepseek-harness-nas（Node 22 + Caddy HTTPS + 登录保护）
+        | 行为对齐 + 中国网络加速
+        v
+本镜像（wljaboy/deepseek-harness-nas）
+```
+
+**各组件来源**：
+
+| 组件 | 来源 | 说明 |
+| --- | --- | --- |
+| DeepSeek Harness | 官方 npm 包 @deepseek-ai/dsh（与官方仓库同源同版本） | 构建时 npm install -g，走国内 npmmirror 镜像 |
+| Node.js 22 | 官方 node:22-bookworm 镜像 | 国内构建时自动走可用 Docker Hub 镜像源 |
+| Caddy | **官方 caddyserver.com 下载 + sha256 校验** | 校验和与官方 caddy_2.10.2_checksums.txt 一致（双源核对）；GitHub Actions 中直接以官方 checksums.txt 校验 |
+| HTTPS/登录/持久化 | 对齐社区 NAS 部署壳设计 | 官方未提供 Docker 方案，该壳是社区唯一 NAS 适配，行为经实测验证 |
+
+> 官方项目 deepseek-ai/deepseek-harness 只发布源码和 npm 包，**没有官方 Docker 镜像**。
+> 本镜像的部署壳（Node + Caddy HTTPS 反向代理 + 登录保护）借鉴了社区 NAS 封装的设计，
+> 但 DSH 本体、Node 运行时、Caddy 均来自官方渠道，构建过程完全可复现。
