@@ -44,7 +44,13 @@ jobs:
           CADDY_VERSION=v2.10.2
           curl -sL -o caddy.tar.gz "https://github.com/caddyserver/caddy/releases/download/${CADDY_VERSION}/caddy_${CADDY_VERSION#v}_linux_amd64.tar.gz"
           curl -sL -o checksums.txt "https://github.com/caddyserver/caddy/releases/download/${CADDY_VERSION}/caddy_${CADDY_VERSION#v}_checksums.txt"
-          grep "caddy_${CADDY_VERSION#v}_linux_amd64.tar.gz" checksums.txt | sha512sum -c -
+          EXPECTED=$(grep "caddy_${CADDY_VERSION#v}_linux_amd64.tar.gz" checksums.txt | awk '{print $1}')
+          ACTUAL=$(sha512sum caddy.tar.gz | awk '{print $1}')
+          if [ "$EXPECTED" != "$ACTUAL" ]; then
+            echo "Caddy SHA-512 校验失败"
+            exit 1
+          fi
+          echo "Caddy 官方 SHA-512 校验通过"
           tar -xzf caddy.tar.gz
           mkdir -p docker/caddy
           cp caddy docker/caddy/caddy 2>/dev/null || cp caddy_linux_amd64 docker/caddy/caddy
