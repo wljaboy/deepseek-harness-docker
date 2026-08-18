@@ -8,6 +8,7 @@
 
 - [特性](#特性)
 - [镜像组成与许可证](#镜像组成与许可证)
+- [拉取镜像](#拉取镜像)
 - [快速开始](#快速开始)
 - [公网访问（Cloudflare Tunnel）](#公网访问cloudflare-tunnel)
 - [环境变量说明](#环境变量说明)
@@ -36,6 +37,22 @@
 | 部署壳（HTTPS/登录/持久化） | 本仓库原创实现 | 见[许可证与免责声明](#许可证与免责声明) |
 
 > 上游 deepseek-harness 采用 MIT 许可证（Copyright (c) 2026 DeepSeek），明确允许免费再分发、修改与商用，仅需保留版权声明。本镜像即按该许可条款进行再分发。
+
+## 拉取镜像
+
+镜像已发布到 GitHub 容器仓库（ghcr.io），两种拉取方式任选其一：
+
+### 中国大陆推荐（南大镜像加速，实测 5MB/s）
+
+```bash
+docker pull ghcr.nju.edu.cn/wljaboy/deepseek-harness-nas:latest
+```
+
+### GitHub 直连
+
+```bash
+docker pull ghcr.io/wljaboy/deepseek-harness-nas:latest
+```
 
 ## 快速开始
 
