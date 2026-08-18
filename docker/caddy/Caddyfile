@@ -1,0 +1,26 @@
+{
+  admin off
+  auto_https disable_redirects
+  default_sni {$HTTPS_ACCESS_HOST}
+  skip_install_trust
+}
+
+https://{$HTTPS_ACCESS_HOST}:8443 {
+  tls internal
+  encode zstd gzip
+
+  header {
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "same-origin"
+    -Server
+  }
+
+  basic_auth {
+    {$DSH_AUTH_USERNAME} {$DSH_AUTH_PASSWORD_HASH}
+  }
+
+  reverse_proxy 127.0.0.1:3080 {
+    header_up Host 127.0.0.1:3080
+    header_up Origin http://127.0.0.1:3080
+  }
+}
