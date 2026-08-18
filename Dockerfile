@@ -1,9 +1,11 @@
 # ============================================================
 # DeepSeek Harness NAS —— 中国大陆网络加速版
-# 与官方版行为完全一致，内置国内镜像加速，部署后无需额外配置
+# 全部组件来自官方渠道：DSH = 官方 npm 包 @deepseek-ai/dsh，Node = 官方 node:22-bookworm，
+# Caddy = 官方 GitHub Release（sha512/256 双重校验）。部署壳（HTTPS+登录）为本仓库原创。
+# 内置国内镜像加速，部署后无需额外配置。
 #
-# 官方镜像: ghcr.io/kanzuori197/deepseek-harness-nas
-# 本项目在官方基础上增加:
+# 官方项目: https://github.com/deepseek-ai/deepseek-harness（发布为 npm 包 @deepseek-ai/dsh）
+# 本镜像额外提供:
 #   - apt 国内镜像源 + 下载重试策略（解决 apt 中断/龟速）
 #   - npm 国内镜像源（registry.npmmirror.com）
 #   - pip 国内镜像源（清华 PyPI）
