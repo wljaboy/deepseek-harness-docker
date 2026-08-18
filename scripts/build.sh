@@ -11,9 +11,10 @@
 #   DSH_VERSION   官方 npm 包版本号（默认 0.1.0-rc.7）
 #   IMAGE_NAME    镜像名称（默认 wljaboy/deepseek-harness-nas）
 #   TAG           镜像标签（默认 <DSH_VERSION>-cn）
-#   APT_MIRROR    apt 镜像源（默认清华 mirrors.tuna.tsinghua.edu.cn）
+#   APT_MIRROR    apt 镜像源（默认阿里云 mirrors.aliyun.com）
 #   NPM_REGISTRY  npm 镜像源（默认 https://registry.npmmirror.com）
-#   GH_PROXY      GitHub 代理前缀（可选，如 https://ghfast.top/）
+#   PIP_MIRROR    pip 镜像源（默认清华 PyPI）
+#   GH_PROXY      GitHub 代理前缀（默认 https://ghfast.top/，设为空可关闭）
 # ============================================================
 set -euo pipefail
 
@@ -21,9 +22,10 @@ set -euo pipefail
 DSH_VERSION="${DSH_VERSION:-0.1.0-rc.7}"
 IMAGE_NAME="${IMAGE_NAME:-wljaboy/deepseek-harness-nas}"
 TAG="${TAG:-${DSH_VERSION}-cn}"
-APT_MIRROR="${APT_MIRROR:-mirrors.tuna.tsinghua.edu.cn}"
+APT_MIRROR="${APT_MIRROR:-mirrors.aliyun.com}"
 NPM_REGISTRY="${NPM_REGISTRY:-https://registry.npmmirror.com}"
-GH_PROXY="${GH_PROXY:-}"
+PIP_MIRROR="${PIP_MIRROR:-https://pypi.tuna.tsinghua.edu.cn/simple}"
+GH_PROXY="${GH_PROXY:-https://ghfast.top/}"
 SAVE=0
 NODE_IMAGE="node:22-bookworm"
 
@@ -31,6 +33,7 @@ NODE_IMAGE="node:22-bookworm"
 HUB_MIRRORS=(
   "docker.m.daocloud.io"
   "docker.1ms.run"
+  "docker.xuanyuan.me"
   "hub.rat.dev"
 )
 
@@ -96,10 +99,9 @@ build() {
     --build-arg "DSH_VERSION=${DSH_VERSION}"
     --build-arg "APT_MIRROR=${APT_MIRROR}"
     --build-arg "NPM_REGISTRY=${NPM_REGISTRY}"
+    --build-arg "PIP_MIRROR=${PIP_MIRROR}"
+    --build-arg "GH_PROXY=${GH_PROXY}"
   )
-  if [ -n "${GH_PROXY}" ]; then
-    build_args+=(--build-arg "GH_PROXY=${GH_PROXY}")
-  fi
   info "构建镜像 ${IMAGE_NAME}:${TAG} (DSH ${DSH_VERSION}) ..."
   # SOURCE_DATE_EPOCH: 整秒时间戳，兼容旧版 Docker/Dockerman 显示
   SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(date +%s)}" docker_cmd build -t "${IMAGE_NAME}:${TAG}" "${build_args[@]}" .

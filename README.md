@@ -23,7 +23,7 @@
 
 - **100% 官方组件**：DeepSeek Harness 官方 npm 包、官方 Node.js 22、官方 Caddy 二进制（SHA-512/256 双重校验）
 - **开箱即用**：HTTPS（自签名证书）+ 登录保护 + 数据持久化，零配置
-- **国内加速**：apt / npm / pip 源已内置，下载重试策略已内置
+- **国内加速**：apt 阿里云源、npm npmmirror、pip 清华源、git GitHub 代理（ghfast.top）全部内置，下载重试策略已内置
 - **两种访问方式**：局域网直接访问；公网通过 Cloudflare Tunnel 内网穿透
 - **认证持久化**：账号密码保存于数据目录，重启自动沿用
 
@@ -181,7 +181,7 @@ Zero Trust → Networks → Tunnels → 你的隧道 → Public Hostname → Add
 | DSH_AUTH_USERNAME | 否 | 登录用户名（留空则首次访问时在网页上设置） |
 | DSH_AUTH_PASSWORD | 否 | 登录密码（留空则首次访问时在网页上设置，**至少 12 字符**） |
 | DSH_TELEMETRY_DISABLED | 否 | 设为 1 关闭遥测 |
-| GH_PROXY | 否 | 容器内 git clone 的 GitHub 代理前缀，如 `https://ghfast.top/` |
+| GH_PROXY | 否 | 容器内 git clone 的 GitHub 代理前缀（镜像默认已内置 `https://ghfast.top/`，设为空可关闭） |
 | NPM_REGISTRY | 否 | 覆盖容器内 npm 镜像源（默认已内置 npmmirror） |
 
 ## 数据持久化
@@ -207,7 +207,7 @@ docker compose up -d
 
 ## 一键本地构建（可选）
 
-适合离线环境或自定义版本：
+适合离线环境或自定义版本。构建时已默认启用：apt 阿里云源、npm npmmirror、pip 清华源、GitHub 代理（ghfast.top）、基础镜像走国内 Docker Hub 镜像源、Caddy 经 gh-proxy 下载（官方 checksums 双重校验）。所有默认值均可用环境变量覆盖（`APT_MIRROR`、`NPM_REGISTRY`、`PIP_MIRROR`、`GH_PROXY`、`DSH_VERSION` 等）：
 
 ```bash
 git clone https://github.com/wljaboy/deepseek-harness-docker.git

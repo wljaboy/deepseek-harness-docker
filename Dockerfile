@@ -2,7 +2,7 @@
 # DeepSeek Harness NAS —— 中国大陆网络加速版
 # 全部组件来自官方渠道：DSH = 官方 npm 包 @deepseek-ai/dsh，Node = 官方 node:22-bookworm，
 # Caddy = 官方 GitHub Release（sha512/256 双重校验）。部署壳（HTTPS+登录）为本仓库原创。
-# 内置国内镜像加速，部署后无需额外配置。
+# 内置国内镜像加速（apt=阿里云、npm=npmmirror、pip=清华、git=ghfast.top 代理、Caddy=gh-proxy 下载），部署后无需额外配置。
 #
 # 官方项目: https://github.com/deepseek-ai/deepseek-harness（发布为 npm 包 @deepseek-ai/dsh）
 # 本镜像额外提供:
@@ -18,14 +18,14 @@
 ARG DSH_VERSION=0.1.0-rc.7
 # 基础镜像（国内构建时 build.sh 会自动换成可用镜像源）
 ARG NODE_IMAGE=node:22-bookworm
-# apt 镜像源（国内构建时 build.sh 默认传清华源；海外构建保持官方源）
-ARG APT_MIRROR=deb.debian.org
-# npm 镜像源（国内构建时 build.sh 默认传 npmmirror）
-ARG NPM_REGISTRY=https://registry.npmjs.org
+# apt 镜像源（默认阿里云；海外构建可传 deb.debian.org 保持官方源）
+ARG APT_MIRROR=mirrors.aliyun.com
+# npm 镜像源（默认 npmmirror，中国大陆可直连）
+ARG NPM_REGISTRY=https://registry.npmmirror.com
 # pip 镜像源
 ARG PIP_MIRROR=https://pypi.tuna.tsinghua.edu.cn/simple
-# GitHub 代理前缀（构建期 git 加速，默认空=不启用）
-ARG GH_PROXY=
+# GitHub 代理前缀（构建期与运行期 git 加速；默认 ghfast.top，传 GH_PROXY= 可关闭）
+ARG GH_PROXY=https://ghfast.top/
 
 FROM ${NODE_IMAGE}
 
@@ -46,7 +46,10 @@ ENV HOME=/data/dsh \
 # ---- 1. apt 国内镜像源 + 重试策略（解决 apt 下载中断/龟速）----
 RUN set -eux; \
     if [ "${APT_MIRROR}" != "deb.debian.org" ]; then \
-      sed -i "s|http://deb.debian.org|http://${APT_MIRROR}|g" /etc/apt/sources.list.d/debian.sources; \
+      sed -i \
+        -e "s|https\?://deb\.debian\.org|https://${APT_MIRROR}|g" \
+        -e "s|https\?://security\.debian\.org|https://${APT_MIRROR}/debian-security|g" \
+        /etc/apt/sources.list.d/debian.sources; \
     fi; \
     # 下载中断自动重试 5 次，超时 60 秒
     printf 'Acquire::Retries "5";\nAcquire::http::Timeout "60";\nAcquire::https::Timeout "60";\n' \
