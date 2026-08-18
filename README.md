@@ -69,11 +69,9 @@ cat > .env << 'EOF'
 # 你的 NAS 局域网 IP（如 192.168.1.111），或公网域名（纯域名，不带协议和端口）
 HTTPS_ACCESS_HOST=192.168.1.111
 
-# 登录用户名
-DSH_AUTH_USERNAME=admin
-
-# 登录密码（必须至少 12 个字符）
-DSH_AUTH_PASSWORD=请修改为至少12位的强密码
+# 登录用户名和密码（可选：不设置则首次访问时在网页上自行设置）
+# DSH_AUTH_USERNAME=admin
+# DSH_AUTH_PASSWORD=请修改为至少12位的强密码
 
 # 持久化目录（改为你 NAS 上的实际绝对路径）
 DSH_DATA_PATH=/volume1/docker/deepseek-harness/data
@@ -92,7 +90,8 @@ docker compose up -d
 浏览器打开：`https://NAS局域网IP:8443`
 
 - 首次访问会提示自签名证书不受信任，选择继续访问即可
-- 使用 .env 中设置的 `DSH_AUTH_USERNAME` 和 `DSH_AUTH_PASSWORD` 登录
+- **首次部署**：若未在 .env 中设置用户名密码，页面会显示「首次设置」，填写用户名和至少 12 位的密码后自动启用登录保护
+- 已设置后：使用设置的账号密码登录
 - 查看日志：`docker logs -f deepseek-harness`，正常应出现 `dsh web: http://127.0.0.1:3080`
 
 ## 环境变量说明
@@ -100,8 +99,8 @@ docker compose up -d
 | 变量 | 必填 | 说明 |
 | --- | --- | --- |
 | HTTPS_ACCESS_HOST | 是 | NAS 局域网 IP 或公网域名（纯域名，不带协议/端口） |
-| DSH_AUTH_USERNAME | 是 | 登录用户名 |
-| DSH_AUTH_PASSWORD | 是 | 登录密码，**至少 12 字符** |
+| DSH_AUTH_USERNAME | 否 | 登录用户名（留空则首次访问时在网页上设置） |
+| DSH_AUTH_PASSWORD | 否 | 登录密码（留空则首次访问时在网页上设置，**至少 12 字符**） |
 | DSH_TELEMETRY_DISABLED | 否 | 设为 1 关闭遥测 |
 | GH_PROXY | 否 | 容器内 git clone 的 GitHub 代理前缀，如 https://ghfast.top/ |
 | NPM_REGISTRY | 否 | 覆盖容器内 npm 镜像源（默认已内置 npmmirror） |
