@@ -1,0 +1,10 @@
+# 构建上下文忽略项
+.git
+.gitignore
+*.md
+docs
+scripts
+.github
+docker-compose.yml
+.env*
+upstream.tar.gz
