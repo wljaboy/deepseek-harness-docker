@@ -1,24 +1,34 @@
-# DeepSeek Harness NAS（中国大陆网络加速版）
+# DeepSeek Harness NAS Docker 镜像（中国大陆网络加速版）
 
-面向 **x86_64 NAS** 的 DeepSeek Harness Docker 镜像，基于官方
-[ghcr.io/kanzuori197/deepseek-harness-nas](https://github.com/kanzuori197/deepseek-harness-nas)
-改造，**行为与官方完全一致**，同时针对中国大陆网络做了全套加速，部署后无需任何额外配置。
+将官方 **DeepSeek Harness** 打包为 x86_64 NAS 可用的 Docker 镜像。
+**全部组件来自官方渠道**，部署壳为本仓库原创实现，内置中国大陆网络加速，部署后无需任何额外配置。
 
-## 本版相比官方的改进
+## 镜像组成（100% 官方来源）
 
-| 问题 | 本版的解决方案 |
+| 组件 | 来源 | 说明 |
+| --- | --- | --- |
+| DeepSeek Harness | 官方 npm 包 @deepseek-ai/dsh | 官方项目 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的正式发布物，构建时 npm install -g（走国内 npmmirror 镜像） |
+| Node.js 22 | 官方 node:22-bookworm 镜像 | Docker 官方镜像，国内构建时自动走可用镜像源 |
+| Caddy | 官方 GitHub Release 下载 | 下载后以官方 caddy_<版本>_checksums.txt 的 SHA-512 校验 + 二进制 SHA-256 双保险 |
+| 部署壳（HTTPS/登录/持久化） | **本仓库原创实现** | 入口脚本 + Caddyfile，不依赖任何第三方镜像 |
+
+> 官方项目 deepseek-ai/deepseek-harness 只发布源码和 npm 包，没有官方 Docker 镜像。
+> 本镜像的 Docker 部署方案（Node + Caddy HTTPS 反向代理 + 登录保护）为本仓库自行编写。
+
+## 本版解决的问题
+
+| 问题 | 解决方案 |
 | --- | --- |
-| GitHub / Docker Hub / git clone 网络不畅 | 基础镜像自动走国内镜像源；构建产物直接导出为 `.tar.gz`，NAS 上 `docker load` 导入，**完全不需要访问 Docker Hub** |
-| `apt install` 下载中断、龟速 | 内置清华 apt 镜像源 + 下载失败自动重试 5 次、超时 60 秒 |
+| GitHub / Docker Hub / git clone 网络不畅 | 基础镜像自动走国内镜像源；构建产物直接导出为 .tar.gz，NAS 上 docker load 导入，**完全不需要访问 Docker Hub** |
+| apt install 下载中断、龟速 | 内置清华 apt 镜像源 + 下载失败自动重试 5 次、超时 60 秒 |
 | npm / npx 下载慢 | 内置 npmmirror（淘宝）npm 镜像源，容器内安装 DSH 插件也自动加速 |
 | pip 下载慢 | 内置清华 PyPI 镜像源 |
-| git clone 慢（容器内） | 可选 `GH_PROXY` 环境变量一键开启 GitHub 代理加速 |
-| 官方更新后镜像无法同步 | 提供 GitHub Actions 自动重建工作流 + 一行命令手动重建 |
+| git clone 慢（容器内） | 可选 GH_PROXY 环境变量一键开启 GitHub 代理加速 |
+| 官方更新后镜像无法同步 | GitHub Actions 自动重建工作流 + 一行命令手动重建 |
 
 ## 快速开始（推荐：直接用构建好的镜像包）
 
-本仓库的 `scripts/build.sh` 可在国内网络一键构建；构建后自动导出
-`deepseek-harness-nas-<版本>.tar.gz`，把该文件拷到 NAS 上：
+在仓库的 Releases 页面下载 deepseek-harness-nas-<版本>.tar.gz（或本地执行 ./scripts/build.sh --save 生成），把该文件拷到 NAS 上：
 
 ```bash
 # 1. 导入镜像（无需外网）
@@ -39,17 +49,17 @@ docker compose up -d
 ## 一键构建（在国内 NAS / 服务器上执行）
 
 ```bash
-git clone https://github.com/kanzuori197/deepseek-harness-nas.git
-cd deepseek-harness-nas
+git clone https://github.com/wljaboy/deepseek-harness-docker.git
+cd deepseek-harness-docker
 ./scripts/build.sh --save
 ```
 
 构建脚本会自动完成：
 
-1. 从国内镜像源拉取基础镜像 `node:22-bookworm`（候选：daocloud / 1ms.run / hub.rat.dev）
-2. 从南大 ghcr 镜像（`ghcr.nju.edu.cn`，实测 5MB/s）提取官方 Caddy 二进制
+1. 从国内镜像源拉取基础镜像 node:22-bookworm（候选：daocloud / 1ms.run / hub.rat.dev）
+2. 通过国内代理下载官方 Caddy 二进制，并用官方 checksums.txt 的 SHA-512 + 二进制 SHA-256 双重校验
 3. 使用清华 apt 源 + npmmirror 构建
-4. 导出 `deepseek-harness-nas-<版本>.tar.gz`
+4. 导出 deepseek-harness-nas-<版本>.tar.gz
 
 ### 常用参数
 
@@ -64,17 +74,15 @@ GH_PROXY=https://ghfast.top/ ./scripts/build.sh     # 构建期启用 GitHub 代
 
 ### 方式一：GitHub Actions 全自动（推荐）
 
-本仓库包含 `.github/workflows/auto-rebuild.yml`，推送到你的 GitHub 仓库后：
+本仓库包含 .github/workflows/auto-rebuild.yml：
 
-- **每天自动检查**官方 npm 包（`@deepseek-ai/dsh`）是否有新版本
-- 有新版本时自动构建并推送到 `ghcr.io/<你的账号>/deepseek-harness-nas:<新版本>` 和 `:latest`
+- **每天自动检查**官方 npm 包（@deepseek-ai/dsh）是否有新版本
+- 有新版本时自动构建并推送到 ghcr.io/<你的账号>/deepseek-harness-nas:<新版本> 和 :latest
 - 也可以到 GitHub 仓库的 **Actions → Run workflow** 手动触发
 
-> 拉取新镜像：`docker pull ghcr.nju.edu.cn/<你的账号>/deepseek-harness-nas:latest`
+> 拉取新镜像：docker pull ghcr.nju.edu.cn/<你的账号>/deepseek-harness-nas:latest
 
 ### 方式二：手动一行命令
-
-官方发布新版本后（例如 `0.1.0-rc.8`）：
 
 ```bash
 DSH_VERSION=0.1.0-rc.8 ./scripts/build.sh --save
@@ -85,31 +93,30 @@ DSH_VERSION=0.1.0-rc.8 ./scripts/build.sh --save
 | | ghcr.io（GitHub 容器仓库） | Docker Hub |
 | --- | --- | --- |
 | 归属 | GitHub 官方 | Docker 官方 |
-| 与 GitHub 账号绑定 | ✅ 登录 GitHub 即可推送 | ❌ 需单独注册账号 |
+| 与 GitHub 账号绑定 | 登录 GitHub 即可推送 | 需单独注册账号 |
 | 中国大陆直连 | 慢（blob 约 20KB/s） | **基本被墙** |
-| 国内加速方案 | `ghcr.nju.edu.cn` 等镜像（实测 5MB/s） | daocloud / 1ms.run 等镜像 |
+| 国内加速方案 | ghcr.nju.edu.cn 等镜像（实测 5MB/s） | daocloud / 1ms.run 等镜像 |
 
-**结论**：本仓库继续发布在 ghcr.io（与原项目一致、无需额外注册账号），但拉取时
-使用国内镜像前缀 `ghcr.nju.edu.cn/` 加速。如果你已经有 Docker Hub 账号，
-也可以在 Docker Hub 上再发一份（把 `IMAGE_NAME` 环境变量改为你的 Docker Hub 账号即可）。
+**结论**：镜像发布在 ghcr.io（GitHub 账号免注册），拉取时使用国内镜像前缀 ghcr.nju.edu.cn/ 加速。
+如果你已有 Docker Hub 账号，也可以把 IMAGE_NAME 环境变量改为你的 Docker Hub 账号再发一份。
 
 ## 环境变量说明
 
 | 变量 | 必填 | 说明 |
 | --- | --- | --- |
-| `HTTPS_ACCESS_HOST` | ✅ | NAS 局域网 IP 或公网域名（纯域名，不带协议/端口） |
-| `DSH_AUTH_USERNAME` | ✅ | 登录用户名 |
-| `DSH_AUTH_PASSWORD` | ✅ | 登录密码，**至少 12 字符** |
-| `DSH_TELEMETRY_DISABLED` | 否 | 设为 `1` 关闭遥测 |
-| `GH_PROXY` | 否 | 容器内 git clone 的 GitHub 代理前缀，如 `https://ghfast.top/` |
-| `NPM_REGISTRY` | 否 | 覆盖容器内 npm 镜像源（默认已内置 npmmirror） |
+| HTTPS_ACCESS_HOST | 是 | NAS 局域网 IP 或公网域名（纯域名，不带协议/端口） |
+| DSH_AUTH_USERNAME | 是 | 登录用户名 |
+| DSH_AUTH_PASSWORD | 是 | 登录密码，**至少 12 字符** |
+| DSH_TELEMETRY_DISABLED | 否 | 设为 1 关闭遥测 |
+| GH_PROXY | 否 | 容器内 git clone 的 GitHub 代理前缀，如 https://ghfast.top/ |
+| NPM_REGISTRY | 否 | 覆盖容器内 npm 镜像源（默认已内置 npmmirror） |
 
 ## 常见问题
 
 ### 页面空白 / 502 Bad Gateway
 
-- 页面空白：请求的 Host 与 `HTTPS_ACCESS_HOST` 不一致，检查回源 Host 配置。
-- 502：DSH web 未监听 3080，查看日志应出现 `dsh web: http://127.0.0.1:3080`。
+- 页面空白：请求的 Host 与 HTTPS_ACCESS_HOST 不一致，检查回源 Host 配置。
+- 502：DSH web 未监听 3080，查看日志应出现 dsh web: http://127.0.0.1:3080。
 
 ### 镜像里装的软件还需要我手动配置国内源吗？
 
@@ -119,30 +126,9 @@ DSH_VERSION=0.1.0-rc.8 ./scripts/build.sh --save
 
 DSH 插件可能需要编译原生模块（node-gyp），完整版自带编译工具链，与官方镜像一致。
 
-## 构建来源（来源链说明）
+### Caddy 二进制怎么保证是官方的？
 
-```
-deepseek-ai/deepseek-harness（官方源码仓库，不提供 Docker 镜像）
-        | 官方发布
-        v
-@deepseek-ai/dsh（官方 npm 包）-- 本镜像的 DeepSeek Harness 本体
-        | 社区 NAS 封装（仅借鉴部署壳设计）
-        v
-kanzuori197/deepseek-harness-nas（Node 22 + Caddy HTTPS + 登录保护）
-        | 行为对齐 + 中国网络加速
-        v
-本镜像（wljaboy/deepseek-harness-nas）
-```
-
-**各组件来源**：
-
-| 组件 | 来源 | 说明 |
-| --- | --- | --- |
-| DeepSeek Harness | 官方 npm 包 @deepseek-ai/dsh（与官方仓库同源同版本） | 构建时 npm install -g，走国内 npmmirror 镜像 |
-| Node.js 22 | 官方 node:22-bookworm 镜像 | 国内构建时自动走可用 Docker Hub 镜像源 |
-| Caddy | **官方 caddyserver.com 下载 + sha256 校验** | 校验和与官方 caddy_2.10.2_checksums.txt 一致（双源核对）；GitHub Actions 中直接以官方 checksums.txt 校验 |
-| HTTPS/登录/持久化 | 对齐社区 NAS 部署壳设计 | 官方未提供 Docker 方案，该壳是社区唯一 NAS 适配，行为经实测验证 |
-
-> 官方项目 deepseek-ai/deepseek-harness 只发布源码和 npm 包，**没有官方 Docker 镜像**。
-> 本镜像的部署壳（Node + Caddy HTTPS 反向代理 + 登录保护）借鉴了社区 NAS 封装的设计，
-> 但 DSH 本体、Node 运行时、Caddy 均来自官方渠道，构建过程完全可复现。
+从官方 GitHub Release（caddyserver/caddy）下载，下载后：
+1. 用官方 caddy_<版本>_checksums.txt 中的 SHA-512 校验压缩包
+2. 解压后二进制再与期望 SHA-256 比对（双保险）
+3. 校验不通过立即中止，不进入镜像
