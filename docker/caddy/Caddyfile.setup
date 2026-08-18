@@ -1,0 +1,25 @@
+# DeepSeek Harness NAS - 首次设置模式 Caddy 配置（本仓库原创）
+# 仅在首次部署（未设置认证）时使用：无登录保护，反代到设置服务 127.0.0.1:3081
+
+{
+    admin off
+    auto_https disable_redirects
+    default_sni {$HTTPS_ACCESS_HOST}
+    skip_install_trust
+}
+
+https://{$HTTPS_ACCESS_HOST}:8443 {
+    tls internal
+    encode zstd gzip
+
+    header {
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "same-origin"
+        -Server
+    }
+
+    # 首次设置服务（监听 127.0.0.1:3081）
+    reverse_proxy 127.0.0.1:3081 {
+        header_up Host 127.0.0.1:3081
+    }
+}
