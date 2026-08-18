@@ -3,12 +3,12 @@
 # DeepSeek Harness NAS —— 中国大陆一键构建脚本
 #
 # 用法:
-#   ./scripts/build.sh                     # 默认构建 0.1.0-rc.6-cn
+#   ./scripts/build.sh                     # 默认构建 0.1.0-rc.7-cn
 #   DSH_VERSION=0.1.0-rc.7 ./scripts/build.sh   # 跟随官方新版本
 #   ./scripts/build.sh --save              # 构建后同时导出 .tar.gz 镜像包
 #
 # 环境变量（均可覆盖）:
-#   DSH_VERSION   官方 npm 包版本号（默认 0.1.0-rc.6）
+#   DSH_VERSION   官方 npm 包版本号（默认 0.1.0-rc.7）
 #   IMAGE_NAME    镜像名称（默认 wljaboy/deepseek-harness-nas）
 #   TAG           镜像标签（默认 <DSH_VERSION>-cn）
 #   APT_MIRROR    apt 镜像源（默认清华 mirrors.tuna.tsinghua.edu.cn）
@@ -18,7 +18,7 @@
 set -euo pipefail
 
 # ---------- 参数 ----------
-DSH_VERSION="${DSH_VERSION:-0.1.0-rc.6}"
+DSH_VERSION="${DSH_VERSION:-0.1.0-rc.7}"
 IMAGE_NAME="${IMAGE_NAME:-wljaboy/deepseek-harness-nas}"
 TAG="${TAG:-${DSH_VERSION}-cn}"
 APT_MIRROR="${APT_MIRROR:-mirrors.tuna.tsinghua.edu.cn}"
