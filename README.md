@@ -1,4 +1,4 @@
-# DeepSeek Harness NAS Docker 镜像（中国大陆网络加速版）
+# DeepSeek Harness Docker 镜像（中国大陆网络加速版）
 
 将官方 **DeepSeek Harness** 打包为 x86_64 NAS 可用的 Docker 镜像。
 **全部组件来自官方渠道**，部署壳为本仓库原创实现，内置中国大陆网络加速，部署后无需任何额外配置。
