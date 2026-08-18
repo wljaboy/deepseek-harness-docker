@@ -9,7 +9,7 @@
 #
 # 环境变量（均可覆盖）:
 #   DSH_VERSION   官方 npm 包版本号（默认 0.1.0-rc.6）
-#   IMAGE_NAME    镜像名称（默认 kanzuori197/deepseek-harness-nas）
+#   IMAGE_NAME    镜像名称（默认 wljaboy/deepseek-harness-nas）
 #   TAG           镜像标签（默认 <DSH_VERSION>-cn）
 #   APT_MIRROR    apt 镜像源（默认清华 mirrors.tuna.tsinghua.edu.cn）
 #   NPM_REGISTRY  npm 镜像源（默认 https://registry.npmmirror.com）
@@ -19,7 +19,7 @@ set -euo pipefail
 
 # ---------- 参数 ----------
 DSH_VERSION="${DSH_VERSION:-0.1.0-rc.6}"
-IMAGE_NAME="${IMAGE_NAME:-kanzuori197/deepseek-harness-nas}"
+IMAGE_NAME="${IMAGE_NAME:-wljaboy/deepseek-harness-nas}"
 TAG="${TAG:-${DSH_VERSION}-cn}"
 APT_MIRROR="${APT_MIRROR:-mirrors.tuna.tsinghua.edu.cn}"
 NPM_REGISTRY="${NPM_REGISTRY:-https://registry.npmmirror.com}"
