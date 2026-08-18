@@ -40,13 +40,16 @@ jobs:
           IMAGE="ghcr.io/${{ github.repository_owner }}/deepseek-harness-nas"
           echo "开始构建 ${VERSION} ..."
           echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-          # 准备 caddy 二进制（从官方镜像提取）
-          docker pull ghcr.nju.edu.cn/kanzuori197/deepseek-harness-nas:0.1.0-rc.6
-          CID=$(docker create ghcr.nju.edu.cn/kanzuori197/deepseek-harness-nas:0.1.0-rc.6)
+          # 下载官方 Caddy + 用官方 checksums.txt 的 SHA-512 校验（Actions 海外网络，走 GitHub Release）
+          CADDY_VERSION=v2.10.2
+          curl -sL -o caddy.tar.gz "https://github.com/caddyserver/caddy/releases/download/${CADDY_VERSION}/caddy_${CADDY_VERSION#v}_linux_amd64.tar.gz"
+          curl -sL -o checksums.txt "https://github.com/caddyserver/caddy/releases/download/${CADDY_VERSION}/caddy_${CADDY_VERSION#v}_checksums.txt"
+          grep "caddy_${CADDY_VERSION#v}_linux_amd64.tar.gz" checksums.txt | sha512sum -c -
+          tar -xzf caddy.tar.gz
           mkdir -p docker/caddy
-          docker cp ${CID}:/usr/local/bin/caddy docker/caddy/caddy
-          docker rm ${CID}
+          cp caddy docker/caddy/caddy 2>/dev/null || cp caddy_linux_amd64 docker/caddy/caddy
           chmod +x docker/caddy/caddy
+          docker/caddy/caddy version
           # 构建并推送（Actions 运行在海外，使用官方源即可）
           docker build --build-arg "DSH_VERSION=${VERSION}" \
             -t "${IMAGE}:${VERSION}" \
