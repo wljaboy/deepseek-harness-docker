@@ -15,24 +15,24 @@
 > 官方项目 deepseek-ai/deepseek-harness 只发布源码和 npm 包，没有官方 Docker 镜像。
 > 本镜像的 Docker 部署方案（Node + Caddy HTTPS 反向代理 + 登录保护）为本仓库自行编写。
 
-## 本版解决的问题
+## 镜像发布位置
 
-| 问题 | 解决方案 |
-| --- | --- |
-| GitHub / Docker Hub / git clone 网络不畅 | 基础镜像自动走国内镜像源；构建产物直接导出为 .tar.gz，NAS 上 docker load 导入，**完全不需要访问 Docker Hub** |
-| apt install 下载中断、龟速 | 内置清华 apt 镜像源 + 下载失败自动重试 5 次、超时 60 秒 |
-| npm / npx 下载慢 | 内置 npmmirror（淘宝）npm 镜像源，容器内安装 DSH 插件也自动加速 |
-| pip 下载慢 | 内置清华 PyPI 镜像源 |
-| git clone 慢（容器内） | 可选 GH_PROXY 环境变量一键开启 GitHub 代理加速 |
-| 官方更新后镜像无法同步 | GitHub Actions 自动重建工作流 + 一行命令手动重建 |
+本仓库通过 GitHub Actions 自动构建镜像并推送到 GitHub 容器仓库（ghcr.io）：
 
-## 快速开始（推荐：直接用构建好的镜像包）
+```text
+ghcr.io/wljaboy/deepseek-harness-nas:0.1.0-rc.7   （跟随官方 npm 包版本号）
+ghcr.io/wljaboy/deepseek-harness-nas:latest       （最新版）
+```
 
-在仓库的 Releases 页面下载 deepseek-harness-nas-<版本>.tar.gz（或本地执行 ./scripts/build.sh --save 生成），把该文件拷到 NAS 上：
+## 快速开始
+
+### 方式一：直接拉取镜像（推荐）
+
+在中国大陆网络下，使用南大镜像站加速拉取（实测 5MB/s），无需访问 Docker Hub：
 
 ```bash
-# 1. 导入镜像（无需外网）
-docker load -i deepseek-harness-nas-0.1.0-rc.6-cn.tar.gz
+# 1. 拉取镜像（国内加速）
+docker pull ghcr.nju.edu.cn/wljaboy/deepseek-harness-nas:latest
 
 # 2. 创建持久化目录
 mkdir -p /volume1/docker/deepseek-harness/{data,workspace}
@@ -44,7 +44,39 @@ cp .env.example .env
 docker compose up -d
 ```
 
+不使用 compose 的话，也可以直接运行：
+
+```bash
+docker run -d \
+  --name deepseek-harness \
+  --restart unless-stopped \
+  --shm-size 1gb \
+  -p 8443:8443 \
+  -e HTTPS_ACCESS_HOST=192.168.1.111 \
+  -e DSH_AUTH_USERNAME=admin \
+  -e DSH_AUTH_PASSWORD=你的至少12位密码 \
+  -e DSH_TELEMETRY_DISABLED=1 \
+  -v /volume1/docker/deepseek-harness/data:/data/dsh \
+  -v /volume1/docker/deepseek-harness/workspace:/workspace \
+  ghcr.nju.edu.cn/wljaboy/deepseek-harness-nas:latest
+```
+
 启动后访问：`https://NAS局域网IP:8443`（用户名密码见 .env）。
+
+> 注意：镜像由 GitHub Actions 自动构建推送，**首次使用前请先到仓库 Actions 页面手动运行一次**
+> `auto-rebuild` 工作流（之后每天自动检查官方新版本）。如果 Actions 尚未运行，镜像可能还不存在。
+
+### 方式二：本地构建 / 导入镜像包
+
+```bash
+git clone https://github.com/wljaboy/deepseek-harness-docker.git
+cd deepseek-harness-docker
+./scripts/build.sh --save    # 构建并导出 deepseek-harness-nas-0.1.0-rc.7-cn.tar.gz
+
+# 把 tar.gz 拷到 NAS 后：
+docker load -i deepseek-harness-nas-0.1.0-rc.7-cn.tar.gz
+docker compose up -d          # 记得把 compose 里的 image 改为本地 tag
+```
 
 ## 一键构建（在国内 NAS / 服务器上执行）
 
@@ -64,7 +96,7 @@ cd deepseek-harness-docker
 ### 常用参数
 
 ```bash
-DSH_VERSION=0.1.0-rc.7 ./scripts/build.sh --save   # 跟随官方新版本
+DSH_VERSION=0.1.0-rc.7 ./scripts/build.sh --save   # 指定版本（默认已是最新 0.1.0-rc.7）
 GH_PROXY=https://ghfast.top/ ./scripts/build.sh     # 构建期启用 GitHub 代理
 ```
 
@@ -77,15 +109,15 @@ GH_PROXY=https://ghfast.top/ ./scripts/build.sh     # 构建期启用 GitHub 代
 本仓库包含 .github/workflows/auto-rebuild.yml：
 
 - **每天自动检查**官方 npm 包（@deepseek-ai/dsh）是否有新版本
-- 有新版本时自动构建并推送到 ghcr.io/<你的账号>/deepseek-harness-nas:<新版本> 和 :latest
-- 也可以到 GitHub 仓库的 **Actions → Run workflow** 手动触发
+- 有新版本时自动构建并推送到 ghcr.io/wljaboy/deepseek-harness-nas:<新版本> 和 :latest
+- 也可以到 GitHub 仓库的 **Actions → auto-rebuild → Run workflow** 手动触发
 
-> 拉取新镜像：docker pull ghcr.nju.edu.cn/<你的账号>/deepseek-harness-nas:latest
+> 拉取新镜像：docker pull ghcr.nju.edu.cn/wljaboy/deepseek-harness-nas:latest
 
 ### 方式二：手动一行命令
 
 ```bash
-DSH_VERSION=0.1.0-rc.8 ./scripts/build.sh --save
+DSH_VERSION=<官方新版本号> ./scripts/build.sh --save
 ```
 
 ## ghcr.io 与 Docker Hub 有什么区别？选哪个？
@@ -117,6 +149,11 @@ DSH_VERSION=0.1.0-rc.8 ./scripts/build.sh --save
 
 - 页面空白：请求的 Host 与 HTTPS_ACCESS_HOST 不一致，检查回源 Host 配置。
 - 502：DSH web 未监听 3080，查看日志应出现 dsh web: http://127.0.0.1:3080。
+
+### docker pull 提示镜像不存在（manifest unknown）？
+
+说明 GitHub Actions 尚未构建推送。请到仓库 **Actions** 页面手动运行一次 auto-rebuild 工作流，
+或在本地执行 ./scripts/build.sh --save 自行构建。
 
 ### 镜像里装的软件还需要我手动配置国内源吗？
 
