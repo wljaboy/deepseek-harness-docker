@@ -92,6 +92,10 @@ docker compose up -d
 - 首次访问会提示自签名证书不受信任，选择继续访问即可
 - **首次部署**：若未在 .env 中设置用户名密码，页面会显示「首次设置」，填写用户名和至少 12 位的密码后自动启用登录保护
 - 已设置后：使用设置的账号密码登录
+- 若使用Cloudflare Tunnel做内网穿透，需要在设置Cloudflare Tunnel面板时禁用TLS证书验证，URL处填写局域网访问地址，
+  例如：https://192.168.1.123:8443（端口填写你自己映射容器的端口）
+  同时修改.env配置中HTTPS_ACCESS_HOST=shilie.test.com(shilie.test.com改为你自己的域名)，其他默认即可。
+
 - 查看日志：`docker logs -f deepseek-harness`，正常应出现 `dsh web: http://127.0.0.1:3080`
 
 ## 环境变量说明
