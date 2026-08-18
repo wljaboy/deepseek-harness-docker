@@ -34,7 +34,7 @@ jobs:
           echo "上次构建版本: ${PREV}"
 
       - name: 有新版本时构建并推送
-        if: steps.compare.outputs.prev != steps.npm.outputs.latest
+        if: steps.compare.outputs.prev != steps.npm.outputs.latest || github.event_name == 'workflow_dispatch'
         run: |
           VERSION="${{ steps.npm.outputs.latest }}"
           IMAGE="ghcr.io/${{ github.repository_owner }}/deepseek-harness-nas"
