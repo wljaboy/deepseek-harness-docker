@@ -57,7 +57,8 @@ jobs:
           chmod +x docker/caddy/caddy
           docker/caddy/caddy version
           # 构建并推送（Actions 运行在海外，使用官方源即可）
-          docker build --build-arg "DSH_VERSION=${VERSION}" \
+          # SOURCE_DATE_EPOCH: 生成整秒时间戳，兼容旧版 Docker/Dockerman 显示
+          SOURCE_DATE_EPOCH=$(date +%s) docker build --build-arg "DSH_VERSION=${VERSION}" \
             -t "${IMAGE}:${VERSION}" \
             -t "${IMAGE}:latest" \
             .
