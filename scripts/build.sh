@@ -101,7 +101,8 @@ build() {
     build_args+=(--build-arg "GH_PROXY=${GH_PROXY}")
   fi
   info "构建镜像 ${IMAGE_NAME}:${TAG} (DSH ${DSH_VERSION}) ..."
-  docker_cmd build -t "${IMAGE_NAME}:${TAG}" "${build_args[@]}" .
+  # SOURCE_DATE_EPOCH: 整秒时间戳，兼容旧版 Docker/Dockerman 显示
+  SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(date +%s)}" docker_cmd build -t "${IMAGE_NAME}:${TAG}" "${build_args[@]}" .
   docker_cmd tag "${IMAGE_NAME}:${TAG}" "${IMAGE_NAME}:latest-cn" 2>/dev/null || true
   ok "构建完成: ${IMAGE_NAME}:${TAG}"
 }
