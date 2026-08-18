@@ -34,9 +34,6 @@ HUB_MIRRORS=(
   "hub.rat.dev"
 )
 
-# 官方 NAS 镜像源（用于提取 caddy 二进制，国内走南大镜像）
-OFFICIAL_IMAGE="ghcr.nju.edu.cn/kanzuori197/deepseek-harness-nas:0.1.0-rc.6"
-
 for arg in "$@"; do
   case "$arg" in
     --save) SAVE=1 ;;
@@ -81,18 +78,16 @@ ensure_base_image() {
   die "所有国内镜像源均无法拉取基础镜像，请检查网络后重试。"
 }
 
-# ---------- 2. 准备 caddy 二进制（从官方镜像提取） ----------
+# ---------- 2. 准备 caddy 二进制（官方渠道下载 + sha256 校验） ----------
 ensure_caddy() {
-  if [ -x "docker/caddy/caddy" ]; then
-    ok "caddy 二进制已存在: docker/caddy/caddy"
+  local EXPECT="${CADDY_SHA256:-4ef1f68c70219536b2711fd16547a79841a2dec2d6b4e56b1e3e5e9da76028e6}"
+  if [ -x "docker/caddy/caddy" ] && [ "$(sha256sum docker/caddy/caddy | awk '{print $1}')" = "$EXPECT" ]; then
+    ok "caddy 二进制已存在且校验通过: docker/caddy/caddy"
     return
   fi
-  info "从官方镜像提取 caddy 二进制（${OFFICIAL_IMAGE}）..."
-  CID="$(docker_cmd create "${OFFICIAL_IMAGE}" 2>/dev/null || die "拉取官方镜像失败，请检查网络")"
-  docker_cmd cp "${CID}:/usr/local/bin/caddy" docker/caddy/caddy
-  docker_cmd rm "${CID}" >/dev/null
-  chmod +x docker/caddy/caddy
-  ok "caddy 提取完成: $(docker/caddy/caddy version | head -1)"
+  info "从官方渠道下载 caddy 二进制（caddyserver.com + sha256 校验）..."
+  bash scripts/fetch-caddy.sh
+  ok "caddy 就绪: $(./docker/caddy/caddy version | head -1)"
 }
 
 # ---------- 3. 构建 ----------
