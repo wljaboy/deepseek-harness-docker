@@ -1,0 +1,67 @@
+name: 自动同步官方 DeepSeek Harness 新版本
+
+# 触发方式:
+#   1. 每天 UTC 02:00 自动检查官方 npm 包是否有新版本
+#   2. 手动点击 "Run workflow" 立即检查
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 查询官方 npm 包最新版本
+        id: npm
+        run: |
+          LATEST=$(curl -s https://registry.npmmirror.com/@deepseek-ai/dsh/latest | python3 -c 'import sys,json; print(json.load(sys.stdin)["version"])')
+          echo "latest=${LATEST}" >> "$GITHUB_OUTPUT"
+          echo "官方最新版本: ${LATEST}"
+
+      - name: 对比当前镜像版本
+        id: compare
+        run: |
+          PREV=$(cat .last-built-version 2>/dev/null || echo "none")
+          echo "prev=${PREV}" >> "$GITHUB_OUTPUT"
+          echo "上次构建版本: ${PREV}"
+
+      - name: 有新版本时构建并推送
+        if: steps.compare.outputs.prev != steps.npm.outputs.latest
+        run: |
+          VERSION="${{ steps.npm.outputs.latest }}"
+          IMAGE="ghcr.io/${{ github.repository_owner }}/deepseek-harness-nas"
+          echo "开始构建 ${VERSION} ..."
+          echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          # 准备 caddy 二进制（从官方镜像提取）
+          docker pull ghcr.nju.edu.cn/kanzuori197/deepseek-harness-nas:0.1.0-rc.6
+          CID=$(docker create ghcr.nju.edu.cn/kanzuori197/deepseek-harness-nas:0.1.0-rc.6)
+          mkdir -p docker/caddy
+          docker cp ${CID}:/usr/local/bin/caddy docker/caddy/caddy
+          docker rm ${CID}
+          chmod +x docker/caddy/caddy
+          # 构建并推送（Actions 运行在海外，使用官方源即可）
+          docker build --build-arg "DSH_VERSION=${VERSION}" \
+            -t "${IMAGE}:${VERSION}" \
+            -t "${IMAGE}:latest" \
+            .
+          docker push "${IMAGE}:${VERSION}"
+          docker push "${IMAGE}:latest"
+          # 记录本次构建版本
+          echo "${VERSION}" > .last-built-version
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .last-built-version
+          git commit -m "build: 同步官方 DSH ${VERSION}" || true
+          git push || true
+
+      - name: 无新版本
+        if: steps.compare.outputs.prev == steps.npm.outputs.latest
+        run: echo "官方版本无变化，跳过构建"
