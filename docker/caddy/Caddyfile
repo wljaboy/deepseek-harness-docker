@@ -1,26 +1,42 @@
+# DeepSeek Harness NAS - Caddy HTTPS 反向代理配置（本仓库原创）
+#
+# 职责：
+#   - 对外提供 HTTPS 访问（端口 8443，自签名证书）
+#   - 登录保护（Basic Auth，密码哈希由入口脚本生成）
+#   - 反向代理到本机 dsh web 服务（127.0.0.1:3080）
+
 {
-  admin off
-  auto_https disable_redirects
-  default_sni {$HTTPS_ACCESS_HOST}
-  skip_install_trust
+    # 关闭管理 API（容器内无需暴露）
+    admin off
+    # 不自动重定向 HTTP（仅服务 HTTPS）
+    auto_https disable_redirects
+    # 默认 SNI 使用用户配置的访问域名或 IP
+    default_sni {$HTTPS_ACCESS_HOST}
+    # 跳过本地 CA 信任安装（容器内无交互终端）
+    skip_install_trust
 }
 
 https://{$HTTPS_ACCESS_HOST}:8443 {
-  tls internal
-  encode zstd gzip
+    # 内部自签名证书，无需申请公网证书
+    tls internal
+    # 响应压缩
+    encode zstd gzip
 
-  header {
-    X-Content-Type-Options "nosniff"
-    Referrer-Policy "same-origin"
-    -Server
-  }
+    # 安全响应头
+    header {
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "same-origin"
+        -Server
+    }
 
-  basic_auth {
-    {$DSH_AUTH_USERNAME} {$DSH_AUTH_PASSWORD_HASH}
-  }
+    # 登录保护
+    basic_auth {
+        {$DSH_AUTH_USERNAME} {$DSH_AUTH_PASSWORD_HASH}
+    }
 
-  reverse_proxy 127.0.0.1:3080 {
-    header_up Host 127.0.0.1:3080
-    header_up Origin http://127.0.0.1:3080
-  }
+    # 反向代理到 DSH Web
+    reverse_proxy 127.0.0.1:3080 {
+        header_up Host 127.0.0.1:3080
+        header_up Origin http://127.0.0.1:3080
+    }
 }
