@@ -56,14 +56,16 @@ jobs:
           cp caddy docker/caddy/caddy 2>/dev/null || cp caddy_linux_amd64 docker/caddy/caddy
           chmod +x docker/caddy/caddy
           docker/caddy/caddy version
-          # 构建并推送（Actions 运行在海外，使用官方源即可）
-          # SOURCE_DATE_EPOCH: 生成整秒时间戳，兼容旧版 Docker/Dockerman 显示
-          SOURCE_DATE_EPOCH=$(date +%s) docker build --build-arg "DSH_VERSION=${VERSION}" \
+          # 用 buildx 构建并直接推送（OCI index 多架构格式，兼容 OpenWrt 等 Docker 环境）
+          # SOURCE_DATE_EPOCH: 整秒时间戳；--provenance=true 生成 OCI index（含 attestation）
+          docker buildx create --use --name dsh-builder 2>/dev/null || true
+          SOURCE_DATE_EPOCH=$(date +%s) docker buildx build \
+            --platform linux/amd64 \
+            --provenance=true \
+            --build-arg "DSH_VERSION=${VERSION}" \
             -t "${IMAGE}:${VERSION}" \
             -t "${IMAGE}:latest" \
-            .
-          docker push "${IMAGE}:${VERSION}"
-          docker push "${IMAGE}:latest"
+            --push .
           # 记录本次构建版本
           echo "${VERSION}" > .last-built-version
           git config user.name "github-actions[bot]"
