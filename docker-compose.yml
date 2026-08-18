@@ -1,9 +1,9 @@
 services:
   deepseek-harness:
-    # 本地构建/导入的镜像（推荐，无需访问外网）
-    image: wljaboy/deepseek-harness-nas:0.1.0-rc.6-cn
-    # 也可使用 GitHub Actions 构建推送到 ghcr.io 的镜像：
-    # image: ghcr.nju.edu.cn/wljaboy/deepseek-harness-nas:latest
+    # 方式一：国内加速直接拉取（推荐，需先触发 GitHub Actions 推送镜像到 ghcr.io）
+    image: ghcr.nju.edu.cn/wljaboy/deepseek-harness-nas:latest
+    # 方式二：使用本地导入的镜像包（docker load 后改回本地 tag）
+    # image: wljaboy/deepseek-harness-nas:0.1.0-rc.7-cn
     container_name: deepseek-harness
     restart: unless-stopped
     shm_size: 1gb
