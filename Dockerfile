@@ -15,7 +15,7 @@
 
 # ---- 构建参数（构建时可用 --build-arg 覆盖）----
 # DSH 版本号，官方发布新版后改这里即可同步更新
-ARG DSH_VERSION=0.1.0-rc.6
+ARG DSH_VERSION=0.1.0-rc.7
 # 基础镜像（国内构建时 build.sh 会自动换成可用镜像源）
 ARG NODE_IMAGE=node:22-bookworm
 # apt 镜像源（国内构建时 build.sh 默认传清华源；海外构建保持官方源）
