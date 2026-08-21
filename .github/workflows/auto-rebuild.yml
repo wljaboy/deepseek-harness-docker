@@ -30,39 +30,37 @@ jobs:
           # - 不使用 /latest：rc 版本有时不会被 dist-tag=latest 指向
           # - 不使用第三方镜像：避免镜像同步延迟造成“官方已发布但检查不到”
           LATEST=$(
-            curl -fsSL 'https://registry.npmjs.org/@deepseek-ai/dsh' | \
-            python3 - <<'PY'
-import json, sys, re
 
-data = json.load(sys.stdin)
-versions = list((data.get("versions") or {}).keys())
-if not versions:
-  raise SystemExit("no versions in npm metadata")
+# 触发方式:
+#   1. 每天按北京时间 01:00 和 07:30 自动检查官方 npm 包是否有新版本
+#   2. 手动点击 "Run workflow" 立即检查
+on:
+  schedule:
+    # GitHub Actions cron 使用 UTC
+    # 北京时间 01:00 = UTC 17:00（前一天）
+    # 北京时间 07:30 = UTC 23:30（前一天）
+    - cron: '0 17 * * *'
+    - cron: '30 23 * * *'
+  workflow_dispatch:
 
-# 支持形如：0.1.0、0.1.0-rc.8、0.1.0-rc.8+build
-rx = re.compile(r'^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+([0-9A-Za-z.-]+))?$')
+permissions:
+  contents: write
+  packages: write
 
-def key(v: str):
-  m = rx.match(v)
-  if not m:
-    # 兜底：无法解析的版本排在最后
-    return (-1, -1, -1, 1, "", -1, v)
-  major, minor, patch = map(int, m.group(1, 2, 3))
-  pre = m.group(4) or ""
-  # SemVer: 正式版 > 预发布版
-  if not pre:
-    return (major, minor, patch, 1, "", 0, v)
-  # 仅对常见 rc 预发布进行数字比较：rc.8 > rc.7
-  mrc = re.match(r'^(rc)\.(\d+)$', pre)
-  if mrc:
-    return (major, minor, patch, 0, "rc", int(mrc.group(2)), v)
-  # 其他预发布：按字符串排序
-  return (major, minor, patch, 0, pre, 0, v)
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
 
-latest = max(versions, key=key)
-sys.stdout.write(latest)
-PY
-          )
+      - name: 查询官方 npm 包最新版本
+        id: npm
+        run: |
+          # 说明：
+          # - 不使用 /latest：rc 版本有时不会被 dist-tag=latest 指向
+          # - 不使用第三方镜像：避免镜像同步延迟造成“官方已发布但检查不到”
+          LATEST="$(curl -fsSL 'https://registry.npmjs.org/@deepseek-ai/dsh' | python3 -c 'import json,sys,re; data=json.load(sys.stdin); versions=list((data.get("versions") or {}).keys()); rx=re.compile(r"^(\\d+)\\.(\\d+)\\.(\\d+)(?:-([0-9A-Za-z.-]+))?(?:\\+([0-9A-Za-z.-]+))?$"); rcx=re.compile(r"^(rc)\\.(\\d+)$"); key=lambda v: (-1,-1,-1,1,"",-1,v) if not (m:=rx.match(v)) else ((int(m.group(1)),int(m.group(2)),int(m.group(3)),1,"",0,v) if (m.group(4) is None) else (int(m.group(1)),int(m.group(2)),int(m.group(3)),0,"rc",int(rcx.match(m.group(4)).group(2)),v) if rcx.match(m.group(4)) else (int(m.group(1)),int(m.group(2)),int(m.group(3)),0,m.group(4),0,v))); print(max(versions, key=key))')"
           echo "latest=${LATEST}" >> "$GITHUB_OUTPUT"
           echo "官方最新版本（按 SemVer 计算）: ${LATEST}"
 
