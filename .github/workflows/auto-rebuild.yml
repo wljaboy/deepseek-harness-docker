@@ -30,44 +30,7 @@ jobs:
           # - 不使用 /latest：rc 版本有时不会被 dist-tag=latest 指向
           # - 不使用第三方镜像：避免镜像同步延迟造成“官方已发布但检查不到”
           # - 版本选择策略：正式版优先（存在正式版时不会被更高版本号的 rc 抢走）
-          LATEST=$(
-            curl -fsSL 'https://registry.npmjs.org/@deepseek-ai/dsh' | python3 - <<'PY'
-import json
-import re
-import sys
-
-data = json.load(sys.stdin)
-versions = list((data.get("versions") or {}).keys())
-if not versions:
-  raise SystemExit("no versions in npm metadata")
-
-rx = re.compile(r'^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+([0-9A-Za-z.-]+))?$')
-rcx = re.compile(r'^(rc)\.(\d+)$')
-
-def key(v: str):
-  m = rx.match(v)
-  if not m:
-    return (-1, 0, 0, 0, 0, 0, v)  # unknown versions last
-
-  major, minor, patch = map(int, m.group(1, 2, 3))
-  pre = m.group(4)
-
-  # 正式版优先：is_stable=1 的永远比 is_stable=0 大
-  if pre is None:
-    return (1, major, minor, patch, 0, 0, v)
-
-  # 预发布：按 (major, minor, patch, pre) 排序
-  mrc = rcx.match(pre)
-  if mrc:
-    return (0, major, minor, patch, 2, int(mrc.group(2)), v)
-
-  # 其他预发布：字符串排序
-  return (0, major, minor, patch, 1, 0, v)
-
-latest = max(versions, key=key)
-sys.stdout.write(latest)
-PY
-          )
+          LATEST="$(curl -fsSL 'https://registry.npmjs.org/@deepseek-ai/dsh' | python3 -c 'import json,sys,re; data=json.load(sys.stdin); vs=list((data.get("versions") or {}).keys()); rx=re.compile(r"^(\\d+)\\.(\\d+)\\.(\\d+)(?:-([0-9A-Za-z.-]+))?(?:\\+.*)?$"); rcx=re.compile(r"^(rc)\\.(\\d+)$"); st=[v for v in vs if re.match(r"^\\d+\\.\\d+\\.\\d+(?:\\+.*)?$", v)]; cand=st or vs; key=lambda v: (-1,-1,-1,-1,-1,v) if not (m:=rx.match(v)) else ((int(m.group(1)),int(m.group(2)),int(m.group(3)),9,0,v) if (m.group(4) is None) else (int(m.group(1)),int(m.group(2)),int(m.group(3)),0,int(rcx.match(m.group(4)).group(2)),v) if rcx.match(m.group(4)) else (int(m.group(1)),int(m.group(2)),int(m.group(3)),0,0,v))); print(max(cand, key=key))')"
           echo "latest=${LATEST}" >> "$GITHUB_OUTPUT"
           echo "官方最新版本（正式版优先）: ${LATEST}"
 
