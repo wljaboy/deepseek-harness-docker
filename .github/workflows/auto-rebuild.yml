@@ -30,7 +30,44 @@ jobs:
           # - 不使用 /latest：rc 版本有时不会被 dist-tag=latest 指向
           # - 不使用第三方镜像：避免镜像同步延迟造成“官方已发布但检查不到”
           # - 版本选择策略：正式版优先（存在正式版时不会被更高版本号的 rc 抢走）
-          LATEST="$(curl -fsSL 'https://registry.npmjs.org/@deepseek-ai/dsh' | python3 -c 'import json,sys,re; data=json.load(sys.stdin); vs=list((data.get("versions") or {}).keys()); stable=[v for v in vs if re.match(r"^\\d+\\.\\d+\\.\\d+(?:\\+.*)?$", v)]; cand=stable or vs; rx=re.compile(r"^(\\d+)\\.(\\d+)\\.(\\d+)(?:-([0-9A-Za-z.-]+))?(?:\\+.*)?$"); rcx=re.compile(r"^rc\\.(\\d+)$"); key=lambda v: (-1,-1,-1,-1,-1,v) if not (m:=rx.match(v)) else (int(m.group(1)),int(m.group(2)),int(m.group(3)), 1 if m.group(4) is None else 0, int(rcx.match(m.group(4)).group(1)) if (m.group(4) and rcx.match(m.group(4))) else 0, v); print(max(cand, key=key))')"
+          LATEST=$(
+            curl -fsSL 'https://registry.npmjs.org/@deepseek-ai/dsh' | python3 - <<'PY'
+import json
+import re
+import sys
+
+data = json.load(sys.stdin)
+versions = list((data.get("versions") or {}).keys())
+if not versions:
+  raise SystemExit("no versions in npm metadata")
+
+rx = re.compile(r'^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+([0-9A-Za-z.-]+))?$')
+rcx = re.compile(r'^(rc)\.(\d+)$')
+
+def key(v: str):
+  m = rx.match(v)
+  if not m:
+    return (-1, 0, 0, 0, 0, 0, v)  # unknown versions last
+
+  major, minor, patch = map(int, m.group(1, 2, 3))
+  pre = m.group(4)
+
+  # 正式版优先：is_stable=1 的永远比 is_stable=0 大
+  if pre is None:
+    return (1, major, minor, patch, 0, 0, v)
+
+  # 预发布：按 (major, minor, patch, pre) 排序
+  mrc = rcx.match(pre)
+  if mrc:
+    return (0, major, minor, patch, 2, int(mrc.group(2)), v)
+
+  # 其他预发布：字符串排序
+  return (0, major, minor, patch, 1, 0, v)
+
+latest = max(versions, key=key)
+sys.stdout.write(latest)
+PY
+          )
           echo "latest=${LATEST}" >> "$GITHUB_OUTPUT"
           echo "官方最新版本（正式版优先）: ${LATEST}"
 
@@ -48,6 +85,7 @@ jobs:
           IMAGE="ghcr.io/${{ github.repository_owner }}/deepseek-harness-nas"
           echo "开始构建 ${VERSION} ..."
           echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
           # 下载官方 Caddy + 用官方 checksums.txt 的 SHA-512 校验（Actions 海外网络，走 GitHub Release）
           CADDY_VERSION=v2.10.2
           curl -sL -o caddy.tar.gz "https://github.com/caddyserver/caddy/releases/download/${CADDY_VERSION}/caddy_${CADDY_VERSION#v}_linux_amd64.tar.gz"
@@ -59,11 +97,13 @@ jobs:
             exit 1
           fi
           echo "Caddy 官方 SHA-512 校验通过"
+
           tar -xzf caddy.tar.gz
           mkdir -p docker/caddy
           cp caddy docker/caddy/caddy 2>/dev/null || cp caddy_linux_amd64 docker/caddy/caddy
           chmod +x docker/caddy/caddy
           docker/caddy/caddy version
+
           # 用 buildx 构建并直接推送（OCI index 多架构格式，兼容 OpenWrt 等 Docker 环境）
           # SOURCE_DATE_EPOCH: 整秒时间戳；--provenance=true 生成 OCI index（含 attestation）
           docker buildx create --use --name dsh-builder 2>/dev/null || true
@@ -74,6 +114,7 @@ jobs:
             -t "${IMAGE}:${VERSION}" \
             -t "${IMAGE}:latest" \
             --push .
+
           # 记录本次构建版本
           echo "${VERSION}" > .last-built-version
           git config user.name "github-actions[bot]"
