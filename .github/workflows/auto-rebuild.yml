@@ -30,7 +30,7 @@ jobs:
           # - 不使用 /latest：rc 版本有时不会被 dist-tag=latest 指向
           # - 不使用第三方镜像：避免镜像同步延迟造成“官方已发布但检查不到”
           # - 版本选择策略：正式版优先（存在正式版时不会被更高版本号的 rc 抢走）
-          LATEST="$(curl -fsSL 'https://registry.npmjs.org/@deepseek-ai/dsh' | python3 -c 'import json,sys,re; data=json.load(sys.stdin); vs=list((data.get("versions") or {}).keys()); rx=re.compile(r"^(\\d+)\\.(\\d+)\\.(\\d+)(?:-([0-9A-Za-z.-]+))?(?:\\+.*)?$"); rcx=re.compile(r"^(rc)\\.(\\d+)$"); st=[v for v in vs if re.match(r"^\\d+\\.\\d+\\.\\d+(?:\\+.*)?$", v)]; cand=st or vs; key=lambda v: (-1,-1,-1,-1,-1,v) if not (m:=rx.match(v)) else ((int(m.group(1)),int(m.group(2)),int(m.group(3)),9,0,v) if (m.group(4) is None) else (int(m.group(1)),int(m.group(2)),int(m.group(3)),0,int(rcx.match(m.group(4)).group(2)),v) if rcx.match(m.group(4)) else (int(m.group(1)),int(m.group(2)),int(m.group(3)),0,0,v))); print(max(cand, key=key))')"
+          LATEST="$(curl -fsSL 'https://registry.npmjs.org/@deepseek-ai/dsh' | python3 -c 'import json,sys,re; data=json.load(sys.stdin); vs=list((data.get("versions") or {}).keys()); stable=[v for v in vs if re.match(r"^\\d+\\.\\d+\\.\\d+(?:\\+.*)?$", v)]; cand=stable or vs; rx=re.compile(r"^(\\d+)\\.(\\d+)\\.(\\d+)(?:-([0-9A-Za-z.-]+))?(?:\\+.*)?$"); rcx=re.compile(r"^rc\\.(\\d+)$"); key=lambda v: (-1,-1,-1,-1,-1,v) if not (m:=rx.match(v)) else (int(m.group(1)),int(m.group(2)),int(m.group(3)), 1 if m.group(4) is None else 0, int(rcx.match(m.group(4)).group(1)) if (m.group(4) and rcx.match(m.group(4))) else 0, v); print(max(cand, key=key))')"
           echo "latest=${LATEST}" >> "$GITHUB_OUTPUT"
           echo "官方最新版本（正式版优先）: ${LATEST}"
 
