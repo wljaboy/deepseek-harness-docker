@@ -103,6 +103,12 @@ DSH_DATA_PATH=/volume1/docker/deepseek-harness/data
 WORKSPACE_PATH=/volume1/docker/deepseek-harness/workspace
 EOF
 ```
+示例：
+- HTTPS_ACCESS_HOST=192.168.15.11（修改为你的IP地址）
+- DSH_AUTH_USERNAME=admin（修改为你用户名）
+- DSH_AUTH_PASSWORD=（请修改为至少12位的强密码）
+- DSH_DATA_PATH=/volume1/docker/deepseek-harness/data（改为你的实际绝对路径）
+- WORKSPACE_PATH=/volume1/docker/deepseek-harness/workspace（改为你的实际绝对路径）
 
 ### 4. 启动
 
