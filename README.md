@@ -103,7 +103,7 @@ DSH_DATA_PATH=/volume1/docker/deepseek-harness/data
 WORKSPACE_PATH=/volume1/docker/deepseek-harness/workspace
 EOF
 ```
-示例：
+示例.env文件：
 ```bash
 HTTPS_ACCESS_HOST=192.168.15.11（修改为你的IP地址）
 DSH_AUTH_USERNAME=admin（修改为你的用户名）
