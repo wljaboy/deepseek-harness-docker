@@ -23,8 +23,10 @@ SETUP_PID=""
 
 if [ -f "${AUTH_FILE}" ]; then
   # 模式 1：已有持久化配置（重启后自动沿用）
-  export DSH_AUTH_USERNAME=$(sed -n 's/.*"username"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "${AUTH_FILE}" | head -1)
-  export DSH_AUTH_PASSWORD_HASH=$(sed -n 's/.*"hash"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "${AUTH_FILE}" | head -1)
+  DSH_AUTH_USERNAME="$(sed -n 's/.*"username"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "${AUTH_FILE}" | head -1)"
+  export DSH_AUTH_USERNAME
+  DSH_AUTH_PASSWORD_HASH="$(sed -n 's/.*"hash"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "${AUTH_FILE}" | head -1)"
+  export DSH_AUTH_PASSWORD_HASH
   if [ -z "${DSH_AUTH_PASSWORD_HASH}" ]; then
     echo "[entrypoint] 错误：认证配置文件无效" >&2
     exit 1
@@ -53,10 +55,18 @@ else
 fi
 
 # ---------- 可选加速配置 ----------
-# 容器内 git clone GitHub 加速（设置 GH_PROXY 即启用，如 https://ghfast.top/）
+# 容器内 git clone GitHub 加速（设置 GH_PROXY 即启用，如 https://ghfast.top/；
+# 设为空则移除镜像内烘焙的代理规则，恢复直连——私有仓库 push 不受第三方代理影响）
 if [ -n "${GH_PROXY:-}" ]; then
   git config --system url."${GH_PROXY}https://github.com/".insteadOf "https://github.com/" 2>/dev/null || true
   echo "[entrypoint] GitHub 代理已启用: ${GH_PROXY}"
+else
+  # 清除镜像构建期烘焙的 insteadOf 规则（Dockerfile GH_PROXY 默认值写入的 /etc/gitconfig）
+  git config --system --get-regexp '^url\..*\.insteadOf$' 2>/dev/null | while IFS= read -r line; do
+    key="${line%% *}"
+    git config --system --unset "${key}" 2>/dev/null || true
+  done
+  echo "[entrypoint] GitHub 代理已关闭（直连 github.com）"
 fi
 
 # 覆盖容器内 npm 镜像源（默认镜像已内置 npmmirror）
@@ -80,8 +90,10 @@ if [ -n "${SETUP_PID}" ]; then
   done
   echo "[entrypoint] 认证配置已保存，切换到正常模式..."
   # 读取新配置
-  export DSH_AUTH_USERNAME=$(sed -n 's/.*"username"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "${AUTH_FILE}" | head -1)
-  export DSH_AUTH_PASSWORD_HASH=$(sed -n 's/.*"hash"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "${AUTH_FILE}" | head -1)
+  DSH_AUTH_USERNAME="$(sed -n 's/.*"username"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "${AUTH_FILE}" | head -1)"
+  export DSH_AUTH_USERNAME
+  DSH_AUTH_PASSWORD_HASH="$(sed -n 's/.*"hash"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "${AUTH_FILE}" | head -1)"
+  export DSH_AUTH_PASSWORD_HASH
   # 重启 caddy 启用登录保护
   kill "${caddy_pid}" 2>/dev/null || true
   wait "${caddy_pid}" 2>/dev/null || true

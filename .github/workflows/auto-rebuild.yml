@@ -28,13 +28,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
-          # 说明：
-          # - 不使用 /latest：rc 版本有时不会被 dist-tag=latest 指向
-          # - 不使用第三方镜像：避免镜像同步延迟造成“官方已发布但检查不到”
-          # - 版本选择策略：正式版优先（存在正式版时不会被更高版本号的 rc 抢走）
-          LATEST="$(curl -fsSL 'https://registry.npmjs.org/@deepseek-ai/dsh' | python3 -c $'import json,sys,re\n\ndata=json.load(sys.stdin)\nversions=list((data.get("versions") or {}).keys())\nif not versions:\n  raise SystemExit("no versions in npm metadata")\n\nrx=re.compile(r"^([0-9]+)[.]([0-9]+)[.]([0-9]+)(?:-([0-9A-Za-z.-]+))?(?:[+]([0-9A-Za-z.-]+))?$")\nrcx=re.compile(r"^rc[.]([0-9]+)$")\n\ndef key(v: str):\n  m=rx.match(v)\n  if not m:\n    return (-1,0,0,0,0,0,v)\n\n  major,minor,patch=map(int,m.group(1,2,3))\n  pre=m.group(4)\n\n  if pre is None:\n    return (1,major,minor,patch,0,0,v)\n\n  mrc=rcx.match(pre)\n  if mrc:\n    return (0,major,minor,patch,2,int(mrc.group(1)),v)\n\n  return (0,major,minor,patch,1,0,v)\n\nprint(max(versions, key=key), end="")\n')"
-
+          # 版本检测逻辑统一在 scripts/detect-latest-dsh-version.sh：
+          #   - 直查官方源 registry.npmjs.org，不受第三方镜像同步延迟影响
+          #   - 不依赖 dist-tag=latest（官方将 rc 版本打在 next 标签上，latest 会滞后）
+          #   - 版本排序：正式版优先，其次按 rc 序号取最高
+          LATEST="$(bash scripts/detect-latest-dsh-version.sh)"
           echo "latest=${LATEST}" >> "$GITHUB_OUTPUT"
           echo "官方最新版本（正式版优先）: ${LATEST}"
 
@@ -42,7 +40,7 @@ jobs:
         id: compare
         shell: bash
         run: |
-          PREV=$(cat .last-built-version 2>/dev/null || echo "none")
+          PREV="$(cat .last-built-version 2>/dev/null || echo none)"
           echo "prev=${PREV}" >> "$GITHUB_OUTPUT"
           echo "上次构建版本: ${PREV}"
 
@@ -62,8 +60,8 @@ jobs:
           CADDY_VERSION=v2.10.2
           curl -sL -o caddy.tar.gz "https://github.com/caddyserver/caddy/releases/download/${CADDY_VERSION}/caddy_${CADDY_VERSION#v}_linux_amd64.tar.gz"
           curl -sL -o checksums.txt "https://github.com/caddyserver/caddy/releases/download/${CADDY_VERSION}/caddy_${CADDY_VERSION#v}_checksums.txt"
-          EXPECTED=$(grep "caddy_${CADDY_VERSION#v}_linux_amd64.tar.gz" checksums.txt | awk '{print $1}')
-          ACTUAL=$(sha512sum caddy.tar.gz | awk '{print $1}')
+          EXPECTED="$(grep "caddy_${CADDY_VERSION#v}_linux_amd64.tar.gz" checksums.txt | awk '{print $1}')"
+          ACTUAL="$(sha512sum caddy.tar.gz | awk '{print $1}')"
           if [ "$EXPECTED" != "$ACTUAL" ]; then
             echo "Caddy SHA-512 校验失败"
             exit 1
@@ -78,7 +76,7 @@ jobs:
 
           # 用 buildx 构建并直接推送
           docker buildx create --use --name dsh-builder 2>/dev/null || true
-          SOURCE_DATE_EPOCH=$(date +%s) docker buildx build \
+          SOURCE_DATE_EPOCH="$(date +%s)" docker buildx build \
             --platform linux/amd64 \
             --provenance=true \
             --build-arg "DSH_VERSION=${VERSION}" \

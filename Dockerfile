@@ -17,7 +17,7 @@
 # DSH 版本号（兜底默认值）
 # - CI 会在检测到上游新版本后自动用 --build-arg DSH_VERSION=<新版本> 触发构建
 # - 本地构建建议直接用 ./scripts/build.sh（已实现自动检测最新版本；也可手动指定 DSH_VERSION）
-ARG DSH_VERSION=0.1.0-rc.7
+ARG DSH_VERSION=0.1.0-rc.8
 # 基础镜像（国内构建时 build.sh 会自动换成可用镜像源）
 ARG NODE_IMAGE=node:22-bookworm
 # apt 镜像源（默认阿里云；海外构建可传 deb.debian.org 保持官方源）
@@ -65,6 +65,13 @@ RUN npm config set registry "${NPM_REGISTRY}" --location=global; \
     npm config set fetch-retries 5 --location=global; \
     npm config set fetch-retry-mintimeout 20000 --location=global; \
     npm config set fetch-retry-maxtimeout 120000 --location=global
+
+# npm 11+ 默认阻止 postinstall 脚本（安全策略）；显式允许 DSH 依赖的原生模块安装脚本，
+# 兼容未来升级 Node 24/26（npm 10 下自动跳过，不影响当前构建）
+RUN major="$(npm --version | cut -d. -f1)"; \
+    if [ "${major}" -ge 11 ] 2>/dev/null; then \
+      npm config set allow-scripts "@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs" --location=global; \
+    fi
 
 # ---- 3. 构建期 git clone GitHub 加速（可选）----
 RUN if [ -n "${GH_PROXY}" ]; then \

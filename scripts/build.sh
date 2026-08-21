@@ -3,8 +3,8 @@
 # DeepSeek Harness NAS —— 中国大陆一键构建脚本
 #
 # 用法:
-#   ./scripts/build.sh                     # 默认构建 0.1.0-rc.7-cn
-#   DSH_VERSION=0.1.0-rc.7 ./scripts/build.sh   # 跟随官方新版本
+#   ./scripts/build.sh                     # 默认构建 0.1.0-rc.8-cn
+#   DSH_VERSION=0.1.0-rc.8 ./scripts/build.sh   # 跟随官方新版本
 #   ./scripts/build.sh --save              # 构建后同时导出 .tar.gz 镜像包
 #
 # 环境变量（均可覆盖）:
@@ -19,7 +19,7 @@
 set -euo pipefail
 
 # ---------- 参数 ----------
-DEFAULT_DSH_VERSION="0.1.0-rc.7"
+DEFAULT_DSH_VERSION="0.1.0-rc.8"
 IMAGE_NAME="${IMAGE_NAME:-wljaboy/deepseek-harness-nas}"
 APT_MIRROR="${APT_MIRROR:-mirrors.aliyun.com}"
 NPM_REGISTRY="${NPM_REGISTRY:-https://registry.npmmirror.com}"
@@ -52,32 +52,15 @@ warn()  { echo -e "\033[1;33m[WARN]\033[0m $*"; }
 die()   { echo -e "\033[1;31m[ERROR]\033[0m $*" >&2; exit 1; }
 
 detect_latest_dsh_version() {
-  # 优先官方源，避免镜像同步延迟；同时不依赖 dist-tag=latest（rc 有时不会指向 latest）
-  curl -fsSL 'https://registry.npmjs.org/@deepseek-ai/dsh' | python3 - <<'PY'
-import json, sys, re
-
-data = json.load(sys.stdin)
-versions = list((data.get("versions") or {}).keys())
-if not versions:
-  raise SystemExit(1)
-
-rx = re.compile(r'^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+([0-9A-Za-z.-]+))?$')
-
-def key(v: str):
-  m = rx.match(v)
-  if not m:
-    return (-1, -1, -1, 1, "", -1, v)
-  major, minor, patch = map(int, m.group(1, 2, 3))
-  pre = m.group(4) or ""
-  if not pre:
-    return (major, minor, patch, 1, "", 0, v)
-  mrc = re.match(r'^(rc)\.(\d+)$', pre)
-  if mrc:
-    return (major, minor, patch, 0, "rc", int(mrc.group(2)), v)
-  return (major, minor, patch, 0, pre, 0, v)
-
-print(max(versions, key=key))
-PY
+  # 复用独立脚本（与 CI 工作流同一套逻辑，避免两处逻辑漂移）
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  if command -v timeout >/dev/null 2>&1; then
+    # 防止离线/断网时长时间卡住（脚本内部单次超时 10s + 3 次重试，这里再加 30s 兜底）
+    timeout 30 bash "${script_dir}/detect-latest-dsh-version.sh" 2>/dev/null
+  else
+    bash "${script_dir}/detect-latest-dsh-version.sh" 2>/dev/null
+  fi
 }
 
 resolve_dsh_version() {
@@ -86,10 +69,15 @@ resolve_dsh_version() {
     return
   fi
 
-  local detected=""
-  if detected="$(detect_latest_dsh_version 2>/dev/null)"; then
-    echo "${detected}"
-    return
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "[WARN] 未找到 python3，跳过在线版本检测，回退到 .last-built-version" >&2
+  else
+    local detected=""
+    if detected="$(detect_latest_dsh_version 2>/dev/null)"; then
+      echo "${detected}"
+      return
+    fi
+    echo "[WARN] 在线检测版本失败，回退到 .last-built-version" >&2
   fi
 
   if [ -f ".last-built-version" ]; then
