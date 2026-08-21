@@ -91,7 +91,7 @@ services:
 
 ```bash
 cat > .env << 'EOF'
-# 你的 NAS 局域网 IP（如 192.168.1.111），或公网域名（纯域名，不带协议和端口）
+# 你的 局域网 IP（如 192.168.1.111），或公网域名（纯域名，不带协议和端口）
 HTTPS_ACCESS_HOST=192.168.1.111
 
 # 登录用户名和密码（可选：不设置则首次访问时在网页上自行设置）
@@ -104,11 +104,13 @@ WORKSPACE_PATH=/volume1/docker/deepseek-harness/workspace
 EOF
 ```
 示例：
-- HTTPS_ACCESS_HOST=192.168.15.11（修改为你的IP地址）
-- DSH_AUTH_USERNAME=admin（修改为你用户名）
-- DSH_AUTH_PASSWORD=（请修改为至少12位的强密码）
-- DSH_DATA_PATH=/volume1/docker/deepseek-harness/data（改为你的实际绝对路径）
-- WORKSPACE_PATH=/volume1/docker/deepseek-harness/workspace（改为你的实际绝对路径）
+```bash
+HTTPS_ACCESS_HOST=192.168.15.11（修改为你的IP地址）
+DSH_AUTH_USERNAME=admin（修改为你的用户名）
+DSH_AUTH_PASSWORD=（请修改为至少12位的强密码）
+DSH_DATA_PATH=/volume1/docker/deepseek-harness/data（改为你的实际绝对路径）
+WORKSPACE_PATH=/volume1/docker/deepseek-harness/workspace（改为你的实际绝对路径）
+```
 
 ### 4. 启动
 
