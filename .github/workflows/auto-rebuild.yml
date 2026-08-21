@@ -5,7 +5,7 @@ name: 自动同步官方 DeepSeek Harness 新版本
 #   2. 手动点击 "Run workflow" 立即检查
 on:
   schedule:
-    - cron: '0 2 * * *'
+    - cron: '0 2,14 * * *'
   workflow_dispatch:
 
 permissions:
