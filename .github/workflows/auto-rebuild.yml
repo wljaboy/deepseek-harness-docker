@@ -25,54 +25,22 @@ jobs:
 
       - name: 查询官方 npm 包最新版本
         id: npm
+        shell: bash
         run: |
+          set -euo pipefail
+
           # 说明：
           # - 不使用 /latest：rc 版本有时不会被 dist-tag=latest 指向
           # - 不使用第三方镜像：避免镜像同步延迟造成“官方已发布但检查不到”
           # - 版本选择策略：正式版优先（存在正式版时不会被更高版本号的 rc 抢走）
-          LATEST=$(
-            curl -fsSL 'https://registry.npmjs.org/@deepseek-ai/dsh' | python3 - <<'PY'
-import json
-import re
-import sys
+          LATEST="$(curl -fsSL 'https://registry.npmjs.org/@deepseek-ai/dsh' | python3 -c $'import json,sys,re\n\ndata=json.load(sys.stdin)\nversions=list((data.get("versions") or {}).keys())\nif not versions:\n  raise SystemExit("no versions in npm metadata")\n\nrx=re.compile(r"^([0-9]+)[.]([0-9]+)[.]([0-9]+)(?:-([0-9A-Za-z.-]+))?(?:[+]([0-9A-Za-z.-]+))?$")\nrcx=re.compile(r"^rc[.]([0-9]+)$")\n\ndef key(v: str):\n  m=rx.match(v)\n  if not m:\n    return (-1,0,0,0,0,0,v)\n\n  major,minor,patch=map(int,m.group(1,2,3))\n  pre=m.group(4)\n\n  if pre is None:\n    return (1,major,minor,patch,0,0,v)\n\n  mrc=rcx.match(pre)\n  if mrc:\n    return (0,major,minor,patch,2,int(mrc.group(1)),v)\n\n  return (0,major,minor,patch,1,0,v)\n\nprint(max(versions, key=key), end="")\n')"
 
-data = json.load(sys.stdin)
-versions = list((data.get("versions") or {}).keys())
-if not versions:
-  raise SystemExit("no versions in npm metadata")
-
-rx = re.compile(r'^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+([0-9A-Za-z.-]+))?$')
-rcx = re.compile(r'^(rc)\.(\d+)$')
-
-def key(v: str):
-  m = rx.match(v)
-  if not m:
-    return (-1, 0, 0, 0, 0, 0, v)  # unknown versions last
-
-  major, minor, patch = map(int, m.group(1, 2, 3))
-  pre = m.group(4)
-
-  # 正式版优先：is_stable=1 的永远比 is_stable=0 大
-  if pre is None:
-    return (1, major, minor, patch, 0, 0, v)
-
-  # 预发布：按 (major, minor, patch, pre) 排序
-  mrc = rcx.match(pre)
-  if mrc:
-    return (0, major, minor, patch, 2, int(mrc.group(2)), v)
-
-  # 其他预发布：字符串排序
-  return (0, major, minor, patch, 1, 0, v)
-
-latest = max(versions, key=key)
-sys.stdout.write(latest)
-PY
-          )
           echo "latest=${LATEST}" >> "$GITHUB_OUTPUT"
           echo "官方最新版本（正式版优先）: ${LATEST}"
 
       - name: 对比当前镜像版本
         id: compare
+        shell: bash
         run: |
           PREV=$(cat .last-built-version 2>/dev/null || echo "none")
           echo "prev=${PREV}" >> "$GITHUB_OUTPUT"
@@ -80,9 +48,13 @@ PY
 
       - name: 有新版本时构建并推送
         if: steps.compare.outputs.prev != steps.npm.outputs.latest || github.event_name == 'workflow_dispatch'
+        shell: bash
         run: |
+          set -euo pipefail
+
           VERSION="${{ steps.npm.outputs.latest }}"
           IMAGE="ghcr.io/${{ github.repository_owner }}/deepseek-harness-nas"
+
           echo "开始构建 ${VERSION} ..."
           echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
@@ -104,8 +76,7 @@ PY
           chmod +x docker/caddy/caddy
           docker/caddy/caddy version
 
-          # 用 buildx 构建并直接推送（OCI index 多架构格式，兼容 OpenWrt 等 Docker 环境）
-          # SOURCE_DATE_EPOCH: 整秒时间戳；--provenance=true 生成 OCI index（含 attestation）
+          # 用 buildx 构建并直接推送
           docker buildx create --use --name dsh-builder 2>/dev/null || true
           SOURCE_DATE_EPOCH=$(date +%s) docker buildx build \
             --platform linux/amd64 \
