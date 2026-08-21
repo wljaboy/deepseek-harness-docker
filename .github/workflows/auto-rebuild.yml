@@ -1,11 +1,15 @@
 name: 自动同步官方 DeepSeek Harness 新版本
 
 # 触发方式:
-#   1. 每天 UTC 02:00 自动检查官方 npm 包是否有新版本
+#   1. 每天按北京时间 01:00 和 07:30 自动检查官方 npm 包是否有新版本
 #   2. 手动点击 "Run workflow" 立即检查
 on:
   schedule:
-    - cron: '0 2,14 * * *'
+    # GitHub Actions cron 使用 UTC
+    # 北京时间 01:00 = UTC 17:00（前一天）
+    # 北京时间 07:30 = UTC 23:30（前一天）
+    - cron: '0 17 * * *'
+    - cron: '30 23 * * *'
   workflow_dispatch:
 
 permissions:
@@ -22,9 +26,45 @@ jobs:
       - name: 查询官方 npm 包最新版本
         id: npm
         run: |
-          LATEST=$(curl -s https://registry.npmmirror.com/@deepseek-ai/dsh/latest | python3 -c 'import sys,json; print(json.load(sys.stdin)["version"])')
+          # 说明：
+          # - 不使用 /latest：rc 版本有时不会被 dist-tag=latest 指向
+          # - 不使用第三方镜像：避免镜像同步延迟造成“官方已发布但检查不到”
+          LATEST=$(
+            curl -fsSL 'https://registry.npmjs.org/@deepseek-ai/dsh' | \
+            python3 - <<'PY'
+          import json, sys, re
+          
+          data = json.load(sys.stdin)
+          versions = list((data.get("versions") or {}).keys())
+          if not versions:
+            raise SystemExit("no versions in npm metadata")
+          
+          # 支持形如：0.1.0、0.1.0-rc.8、0.1.0-rc.8+build
+          rx = re.compile(r'^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+([0-9A-Za-z.-]+))?$')
+          
+          def key(v: str):
+            m = rx.match(v)
+            if not m:
+              # 兜底：无法解析的版本排在最后
+              return (-1, -1, -1, 1, "", -1, v)
+            major, minor, patch = map(int, m.group(1, 2, 3))
+            pre = m.group(4) or ""
+            # SemVer: 正式版 > 预发布版
+            if not pre:
+              return (major, minor, patch, 1, "", 0, v)
+            # 仅对常见 rc 预发布进行数字比较：rc.8 > rc.7
+            mrc = re.match(r'^(rc)\.(\d+)$', pre)
+            if mrc:
+              return (major, minor, patch, 0, "rc", int(mrc.group(2)), v)
+            # 其他预发布：按字符串排序
+            return (major, minor, patch, 0, pre, 0, v)
+          
+          latest = max(versions, key=key)
+          sys.stdout.write(latest)
+          PY
+          )
           echo "latest=${LATEST}" >> "$GITHUB_OUTPUT"
-          echo "官方最新版本: ${LATEST}"
+          echo "官方最新版本（按 SemVer 计算）: ${LATEST}"
 
       - name: 对比当前镜像版本
         id: compare
@@ -75,5 +115,5 @@ jobs:
           git push || true
 
       - name: 无新版本
-        if: steps.compare.outputs.prev == steps.npm.outputs.latest
+        if: steps.compare.outputs.prev == steps.npm.outputs.latest && github.event_name != 'workflow_dispatch'
         run: echo "官方版本无变化，跳过构建"

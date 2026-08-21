@@ -220,9 +220,9 @@ docker compose up -d
 ```bash
 git clone https://github.com/wljaboy/deepseek-harness-docker.git
 cd deepseek-harness-docker
-./scripts/build.sh --save   # 构建并导出 tar.gz
+./scripts/build.sh --save   # 构建并导出 tar.gz（默认会自动检测最新 DSH 版本；也可手动 DSH_VERSION=... 指定）
 
-docker load -i deepseek-harness-nas-0.1.0-rc.7-cn.tar.gz
+docker load -i deepseek-harness-nas-<DSH_VERSION>-cn.tar.gz
 docker compose up -d        # compose 中 image 改为本地 tag
 ```
 

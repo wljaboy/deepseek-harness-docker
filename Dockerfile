@@ -14,7 +14,9 @@
 # ============================================================
 
 # ---- 构建参数（构建时可用 --build-arg 覆盖）----
-# DSH 版本号，官方发布新版后改这里即可同步更新
+# DSH 版本号（兜底默认值）
+# - CI 会在检测到上游新版本后自动用 --build-arg DSH_VERSION=<新版本> 触发构建
+# - 本地构建建议直接用 ./scripts/build.sh（已实现自动检测最新版本；也可手动指定 DSH_VERSION）
 ARG DSH_VERSION=0.1.0-rc.7
 # 基础镜像（国内构建时 build.sh 会自动换成可用镜像源）
 ARG NODE_IMAGE=node:22-bookworm

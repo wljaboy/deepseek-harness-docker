@@ -8,7 +8,7 @@
 #   ./scripts/build.sh --save              # 构建后同时导出 .tar.gz 镜像包
 #
 # 环境变量（均可覆盖）:
-#   DSH_VERSION   官方 npm 包版本号（默认 0.1.0-rc.7）
+#   DSH_VERSION   官方 npm 包版本号（默认：自动检测最新；离线则回退到 .last-built-version 或脚本默认值）
 #   IMAGE_NAME    镜像名称（默认 wljaboy/deepseek-harness-nas）
 #   TAG           镜像标签（默认 <DSH_VERSION>-cn）
 #   APT_MIRROR    apt 镜像源（默认阿里云 mirrors.aliyun.com）
@@ -19,9 +19,8 @@
 set -euo pipefail
 
 # ---------- 参数 ----------
-DSH_VERSION="${DSH_VERSION:-0.1.0-rc.7}"
+DEFAULT_DSH_VERSION="0.1.0-rc.7"
 IMAGE_NAME="${IMAGE_NAME:-wljaboy/deepseek-harness-nas}"
-TAG="${TAG:-${DSH_VERSION}-cn}"
 APT_MIRROR="${APT_MIRROR:-mirrors.aliyun.com}"
 NPM_REGISTRY="${NPM_REGISTRY:-https://registry.npmmirror.com}"
 PIP_MIRROR="${PIP_MIRROR:-https://pypi.tuna.tsinghua.edu.cn/simple}"
@@ -51,6 +50,58 @@ info()  { echo -e "\033[1;36m[INFO]\033[0m $*"; }
 ok()    { echo -e "\033[1;32m[OK]\033[0m $*"; }
 warn()  { echo -e "\033[1;33m[WARN]\033[0m $*"; }
 die()   { echo -e "\033[1;31m[ERROR]\033[0m $*" >&2; exit 1; }
+
+detect_latest_dsh_version() {
+  # 优先官方源，避免镜像同步延迟；同时不依赖 dist-tag=latest（rc 有时不会指向 latest）
+  curl -fsSL 'https://registry.npmjs.org/@deepseek-ai/dsh' | python3 - <<'PY'
+import json, sys, re
+
+data = json.load(sys.stdin)
+versions = list((data.get("versions") or {}).keys())
+if not versions:
+  raise SystemExit(1)
+
+rx = re.compile(r'^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+([0-9A-Za-z.-]+))?$')
+
+def key(v: str):
+  m = rx.match(v)
+  if not m:
+    return (-1, -1, -1, 1, "", -1, v)
+  major, minor, patch = map(int, m.group(1, 2, 3))
+  pre = m.group(4) or ""
+  if not pre:
+    return (major, minor, patch, 1, "", 0, v)
+  mrc = re.match(r'^(rc)\.(\d+)$', pre)
+  if mrc:
+    return (major, minor, patch, 0, "rc", int(mrc.group(2)), v)
+  return (major, minor, patch, 0, pre, 0, v)
+
+print(max(versions, key=key))
+PY
+}
+
+resolve_dsh_version() {
+  if [ -n "${DSH_VERSION:-}" ]; then
+    echo "${DSH_VERSION}"
+    return
+  fi
+
+  local detected=""
+  if detected="$(detect_latest_dsh_version 2>/dev/null)"; then
+    echo "${detected}"
+    return
+  fi
+
+  if [ -f ".last-built-version" ]; then
+    cat ".last-built-version"
+    return
+  fi
+
+  echo "${DEFAULT_DSH_VERSION}"
+}
+
+DSH_VERSION="$(resolve_dsh_version)"
+TAG="${TAG:-${DSH_VERSION}-cn}"
 
 docker_cmd() {
   if docker info >/dev/null 2>&1; then
