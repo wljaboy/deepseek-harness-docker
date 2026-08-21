@@ -84,7 +84,8 @@ jobs:
           docker buildx create --use --name dsh-builder 2>/dev/null || true
           SOURCE_DATE_EPOCH="$(date +%s)" docker buildx build \
             --platform linux/amd64 \
-            --provenance=true \
+            # 关闭 provenance attestation：ghcr 上 OCI 附加清单曾导致镜像内容 404 无法拉取
+            --provenance=false \
             --build-arg "DSH_VERSION=${VERSION}" \
             --build-arg "NPM_REGISTRY=https://registry.npmjs.org" \
             -t "${IMAGE}:${VERSION}" \
