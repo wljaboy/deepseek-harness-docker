@@ -22,8 +22,10 @@ ARG DSH_VERSION=0.1.0-rc.8
 ARG NODE_IMAGE=node:22-bookworm
 # apt 镜像源（默认阿里云；海外构建可传 deb.debian.org 保持官方源）
 ARG APT_MIRROR=mirrors.aliyun.com
-# npm 镜像源（默认 npmmirror，中国大陆可直连）
+# npm 构建期安装源（默认 npmmirror；CI 海外构建可传官方源避免镜像同步延迟）
 ARG NPM_REGISTRY=https://registry.npmmirror.com
+# 运行期容器内 npm 默认源（与构建期解耦，保持国内加速）
+ARG RUNTIME_NPM_REGISTRY=https://registry.npmmirror.com
 # pip 镜像源
 ARG PIP_MIRROR=https://pypi.tuna.tsinghua.edu.cn/simple
 # GitHub 代理前缀（构建期与运行期 git 加速；默认 ghfast.top，传 GH_PROXY= 可关闭）
@@ -41,7 +43,7 @@ ARG GH_PROXY
 ENV HOME=/data/dsh \
     DSH_HOME=/data/dsh \
     DSH_TELEMETRY_DISABLED=1 \
-    NPM_CONFIG_REGISTRY=${NPM_REGISTRY} \
+    NPM_CONFIG_REGISTRY=${RUNTIME_NPM_REGISTRY} \
     PIP_INDEX_URL=${PIP_MIRROR} \
     PIP_TRUSTED_HOST=pypi.tuna.tsinghua.edu.cn
 

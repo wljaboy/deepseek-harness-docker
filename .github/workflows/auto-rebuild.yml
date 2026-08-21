@@ -86,6 +86,7 @@ jobs:
             --platform linux/amd64 \
             --provenance=true \
             --build-arg "DSH_VERSION=${VERSION}" \
+            --build-arg "NPM_REGISTRY=https://registry.npmjs.org" \
             -t "${IMAGE}:${VERSION}" \
             -t "${IMAGE}:latest" \
             --push .
