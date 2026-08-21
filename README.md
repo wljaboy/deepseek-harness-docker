@@ -2,7 +2,7 @@
 
 > **非官方项目**：本镜像为社区独立构建，与 DeepSeek（深度求索）官方无隶属、合作或背书关系。镜像内所有组件均来自官方发布渠道，部署壳为本仓库原创实现。
 
-将官方 **DeepSeek Harness** 打包为 x86_64 NAS 可用的 Docker 镜像，内置中国大陆网络加速，部署后无需额外加速配置。
+将官方 **DeepSeek Harness** 打包为 x86_64 可用的 Docker 镜像，内置中国大陆网络加速，部署后无需额外加速配置。
 
 ## 目录
 
@@ -85,20 +85,20 @@ services:
 ```
 
 > 使用 GitHub 直连拉取的用户，把 `image` 换成 `ghcr.io/wljaboy/deepseek-harness-nas:latest` 即可。
-> 端口可自定义：例如改为 `8773:8443`，局域网访问地址随之变为 `https://NAS局域网IP:8773`。
+> 端口可自定义：例如改为 `8773:8443`，局域网访问地址随之变为 `https://局域网IP:8773`。
 
 ### 3. 创建 .env 环境变量文件
 
 ```bash
 cat > .env << 'EOF'
-# 你的 局域网 IP（如 192.168.1.111），或公网域名（纯域名，不带协议和端口）
-HTTPS_ACCESS_HOST=192.168.1.111
+# 你的 局域网 IP（如 192.168.15.11），或公网域名（纯域名，不带协议和端口）
+HTTPS_ACCESS_HOST=192.168.15.11
 
 # 登录用户名和密码（可选：不设置则首次访问时在网页上自行设置）
 # DSH_AUTH_USERNAME=admin
 # DSH_AUTH_PASSWORD=请修改为至少12位的强密码
 
-# 持久化目录（改为你 NAS 上的实际绝对路径）
+# 持久化目录（改为你的实际绝对路径）
 DSH_DATA_PATH=/volume1/docker/deepseek-harness/data
 WORKSPACE_PATH=/volume1/docker/deepseek-harness/workspace
 EOF
@@ -120,7 +120,7 @@ docker compose up -d
 
 ### 5. 访问
 
-浏览器打开：`https://NAS局域网IP:8443`
+浏览器打开：`https://局域网IP:8443`
 
 - 首次访问会提示自签名证书不受信任，选择继续访问即可
 - **首次部署**：若未在 .env 中设置用户名密码，页面会显示「首次设置」，填写用户名和至少 12 位的密码后自动启用登录保护
@@ -129,7 +129,7 @@ docker compose up -d
 
 ## 公网访问（Cloudflare Tunnel）
 
-NAS 无公网 IP 或不想开放端口时，推荐用 Cloudflare Tunnel 做免费内网穿透。
+无公网 IP 或不想开放端口时，推荐用 Cloudflare Tunnel 做免费内网穿透。
 
 **前置条件**：一个托管在 Cloudflare 的域名。
 
@@ -185,7 +185,7 @@ Zero Trust → Networks → Tunnels → 你的隧道 → Public Hostname → Add
 
 | 变量 | 必填 | 说明 |
 | --- | --- | --- |
-| HTTPS_ACCESS_HOST | 是 | NAS 局域网 IP 或公网域名（纯域名，不带协议/端口） |
+| HTTPS_ACCESS_HOST | 是 | 局域网 IP 或公网域名（纯域名，不带协议/端口） |
 | DSH_AUTH_USERNAME | 否 | 登录用户名（留空则首次访问时在网页上设置） |
 | DSH_AUTH_PASSWORD | 否 | 登录密码（留空则首次访问时在网页上设置，**至少 12 字符**） |
 | DSH_TELEMETRY_DISABLED | 否 | 设为 1 关闭遥测 |
