@@ -86,6 +86,21 @@ if [ -n "${NPM_REGISTRY:-}" ]; then
   echo "[entrypoint] npm 镜像源: ${NPM_REGISTRY}"
 fi
 
+# ---------- 可选：安装插件市场 dshmarket ----------
+# 官方安装命令：dsh plugin --profile web add dshmarket（需要 pnpm，镜像已内置）。
+# 默认自动安装一次（写入 /data/dsh 持久目录，用标记文件避免重复），失败不阻塞启动。
+# 设置 DSH_INSTALL_MARKET=0 关闭。
+MARKET_FLAG="/data/dsh/.dshmarket-installed"
+if [ "${DSH_INSTALL_MARKET:-1}" != "0" ] && [ ! -f "${MARKET_FLAG}" ]; then
+  echo "[entrypoint] 正在安装插件市场 dshmarket..."
+  if dsh plugin --profile web add dshmarket >/tmp/dshmarket-install.log 2>&1; then
+    touch "${MARKET_FLAG}"
+    echo "[entrypoint] 插件市场 dshmarket 已安装（浏览器打开 设置 → 插件市场 即用）"
+  else
+    echo "[entrypoint] 插件市场安装失败（不影响启动，详见 /tmp/dshmarket-install.log）"
+  fi
+fi
+
 # ---------- 启动服务 ----------
 dsh web &
 dsh_pid=$!

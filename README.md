@@ -259,6 +259,7 @@ AI 就能用了。以后换模型也可以这样填（比如 `OPENAI_API_KEY=...
 | `DSH_AUTH_USERNAME` | 否 | 登录用户名（留空则首次访问时在网页上设置） |
 | `DSH_AUTH_PASSWORD` | 否 | 登录密码（留空则首次访问时在网页上设置，至少 12 位） |
 | `DSH_TELEMETRY_DISABLED` | 否 | 设为 `1` 关闭遥测上报 |
+| `DSH_INSTALL_MARKET` | 否 | 是否自动安装插件市场 dshmarket（默认 `1`=装；`0`=关闭） |
 | `DSH_SETUP_PORT` | 否 | 回环设置代理端口（如 `18080`）；留空=关闭，用于本机打开设置页 |
 | `GH_PROXY` | 否 | 容器内 git 下载 GitHub 的代理前缀（默认已内置国内加速，设为空可关闭） |
 | `NPM_REGISTRY` | 否 | 覆盖容器内 npm 镜像源（默认已内置 npmmirror） |

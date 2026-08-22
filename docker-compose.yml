@@ -24,6 +24,8 @@ services:
       DSH_AUTH_PASSWORD: "${DSH_AUTH_PASSWORD:-}"
       # 模型 API Key（推荐）：在 .env 填 DeepSeek 的 API Key 即可直接使用，无需进设置页
       DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
+      # 是否自动安装插件市场 dshmarket（默认 1=装；0=关闭）
+      DSH_INSTALL_MARKET: "${DSH_INSTALL_MARKET:-1}"
       DSH_TELEMETRY_DISABLED: "1"
       # 可选：容器内 git clone GitHub 加速（不填则使用默认行为）
       # GH_PROXY: "https://ghfast.top/"

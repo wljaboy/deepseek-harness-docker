@@ -84,6 +84,9 @@ RUN if [ -n "${GH_PROXY}" ]; then \
 RUN npm install --global --no-audit --no-fund "@deepseek-ai/dsh@${DSH_VERSION}" \
     && dsh --help >/dev/null
 
+# ---- 4.5 pnpm（dsh 插件 / 插件市场 dshmarket 的管理依赖）----
+RUN npm install --global --no-audit --no-fund pnpm
+
 # ---- 5. Caddy 反向代理（HTTPS + 登录保护）----
 # 优先使用构建上下文 docker/caddy/caddy（官方 2.10.2 静态二进制，由 build.sh 自动提取）
 # 若不存在则使用 apt 源安装的 caddy
