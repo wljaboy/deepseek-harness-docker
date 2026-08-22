@@ -7,9 +7,12 @@
 name: 自动同步官方 DeepSeek Harness 新版本
 
 # 触发方式:
-#   1. 每天按北京时间 01:00 和 07:30 自动检查官方 npm 包是否有新版本
-#   2. 手动点击 "Run workflow" 立即检查
+#   1. push 到 main 分支：立即用当前代码重建并推送镜像（含部署壳代码改动）
+#   2. 每天按北京时间 01:00 和 07:30 自动检查官方 npm 包是否有新版本
+#   3. 手动点击 "Run workflow" 立即检查
 on:
+  push:
+    branches: [main]
   schedule:
     # GitHub Actions cron 使用 UTC
     # 北京时间 01:00 = UTC 17:00（前一天）
@@ -51,7 +54,7 @@ jobs:
           echo "上次构建版本: ${PREV}"
 
       - name: 有新版本时构建并推送
-        if: steps.compare.outputs.prev != steps.npm.outputs.latest || github.event_name == 'workflow_dispatch'
+        if: steps.compare.outputs.prev != steps.npm.outputs.latest || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         shell: bash
         run: |
           set -euo pipefail
