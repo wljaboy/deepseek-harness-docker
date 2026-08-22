@@ -1,6 +1,6 @@
 # DeepSeek Harness Docker 快速部署版
 
-> **通用安装说明。** 用最简单的方式，把 DeepSeek Harness 装到你的设备上——NAS、Linux 服务器、云主机、普通电脑、Windows/WSL 都可以。
+> **通用安装说明。** 用最简单的方式，把 DeepSeek Harness 装到你的 **x86_64（Intel/AMD）** 设备上——NAS、Linux 服务器、云主机、普通电脑、Windows/WSL 都可以；**ARM 设备暂不支持**。
 > **非官方项目**：本镜像是社区独立构建，与 DeepSeek（深度求索）官方没有隶属、合作或背书关系。
 
 ## 这是什么
@@ -18,10 +18,10 @@ DeepSeek Harness 是 DeepSeek 的一个**智能助手（AI Agent）**。你在�
 
 ## 运行环境要求（重要）
 
-| 项 | 说明 |
+| 判定 | 说明 |
 | --- | --- |
-| 架构 | **x86_64（Intel/AMD）**。目前镜像只构建了 amd64，**ARM 设备暂不支持**（如 M 系列 Mac 的 Docker、ARM 版 NAS、树莓派）。 |
-| 系统 | 任何能跑 Docker 的 x86_64 系统：NAS、Linux 服务器、云主机、桌面 Linux、Windows + WSL 均可 |
+| ✅ 支持 | **x86_64（Intel/AMD）** 架构的 Docker 设备：NAS、Linux 服务器、云主机、桌面 Linux、Windows/WSL 都可以 |
+| ❌ 暂不支持 | **ARM 架构**：M 系列 Mac 的 Docker、ARM 版 NAS、树莓派等 |
 | 配置 | 建议 2 核、4G 内存以上 |
 
 ## 开始前，你需要准备
