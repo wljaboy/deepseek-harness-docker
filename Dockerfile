@@ -95,6 +95,7 @@ COPY docker/caddy/Caddyfile /etc/caddy/Caddyfile
 COPY docker/caddy/Caddyfile.setup /etc/caddy/Caddyfile.setup
 COPY docker/entrypoint/entrypoint.sh /usr/local/bin/dsh-entrypoint
 COPY docker/entrypoint/dsh-setup-server.js /usr/local/bin/dsh-setup-server.js
+COPY docker/setup/loopback-proxy.js /usr/local/bin/dsh-loopback-proxy.js
 RUN sed -i 's/\r$//' /usr/local/bin/dsh-entrypoint \
     && chmod 0755 /usr/local/bin/dsh-entrypoint \
     && mkdir -p /data/dsh /workspace

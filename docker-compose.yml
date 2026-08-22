@@ -9,11 +9,19 @@ services:
     shm_size: 1gb
     ports:
       - "8443:8443"
+      # 回环设置端口（可选）：仅用于本机 SSH 隧道打通后，通过 http://127.0.0.1:18080
+      # 进入 DSH 设置页配置 API Key。只绑定宿主机回环(127.0.0.1)，不暴露到局域网/公网。
+      # 启用方式：在 .env 中设置 DSH_SETUP_PORT=18080（可改成任意端口）。
+      - "127.0.0.1:${DSH_SETUP_PORT:-18080}:${DSH_SETUP_PORT:-18080}"
     environment:
       HTTPS_ACCESS_HOST: "${HTTPS_ACCESS_HOST}"
+      # 回环设置代理启用开关：留空=关闭；设为端口号（如 18080）即启用。
+      DSH_SETUP_PORT: "${DSH_SETUP_PORT:-}"
       # 登录用户名/密码（可选）：不设置则首次访问时在网页上自行设置
-      # DSH_AUTH_USERNAME: "${DSH_AUTH_USERNAME}"
-      # DSH_AUTH_PASSWORD: "${DSH_AUTH_PASSWORD}"
+      DSH_AUTH_USERNAME: "${DSH_AUTH_USERNAME:-}"
+      DSH_AUTH_PASSWORD: "${DSH_AUTH_PASSWORD:-}"
+      # 模型 API Key（推荐）：在 .env 填 DeepSeek 的 API Key 即可直接使用，无需进设置页
+      DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
       DSH_TELEMETRY_DISABLED: "1"
       # 可选：容器内 git clone GitHub 加速（不填则使用默认行为）
       # GH_PROXY: "https://ghfast.top/"

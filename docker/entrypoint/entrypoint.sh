@@ -20,6 +20,7 @@ set -eu
 AUTH_FILE="/data/dsh/.dsh-auth.json"
 CADDY_CONFIG="/etc/caddy/Caddyfile"
 SETUP_PID=""
+SETUP_PROXY_PID=""
 
 if [ -f "${AUTH_FILE}" ]; then
   # 模式 1：已有持久化配置（重启后自动沿用）
@@ -82,6 +83,21 @@ dsh_pid=$!
 caddy run --config "${CADDY_CONFIG}" --adapter caddyfile &
 caddy_pid=$!
 
+# ---------- 可选：回环设置代理 ----------
+# DSH web 被官方限制只能绑定 127.0.0.1，且设置页仅在浏览器以回环 hostname 打开时
+# 可用（客户端 isLoopback 判定）。设置 DSH_SETUP_PORT（如 18080）后，本代理把容器内
+# 0.0.0.0:<port> 透明转发到 127.0.0.1:3080（DSH web）；配合 docker 把该端口仅发布到
+# 宿主机回环 127.0.0.1:<port>，再用 SSH 隧道在本机打开 http://127.0.0.1:<port>，
+# 浏览器地址栏 hostname 即为回环，设置页（含 API Key）可用。
+# 注意：请勿将该端口发布到 0.0.0.0 / 公网，否则等于绕过 DSH 的回环安全约束。
+if [ -n "${DSH_SETUP_PORT:-}" ] && [ "${DSH_SETUP_PORT}" != "0" ]; then
+  node /usr/local/bin/dsh-loopback-proxy.js &
+  SETUP_PROXY_PID=$!
+  echo "[entrypoint] 回环设置代理已启动（端口 ${DSH_SETUP_PORT}）"
+  echo "[entrypoint]   本机 SSH 隧道: ssh -L ${DSH_SETUP_PORT}:127.0.0.1:${DSH_SETUP_PORT} <你的NAS>"
+  echo "[entrypoint]   回环 URL:      http://127.0.0.1:${DSH_SETUP_PORT}"
+fi
+
 # ---------- 首次设置：等待用户完成并切换到正常模式 ----------
 if [ -n "${SETUP_PID}" ]; then
   echo "[entrypoint] 等待用户在网页完成首次设置..."
@@ -107,6 +123,7 @@ fi
 # ---------- 退出清理 ----------
 cleanup() {
   kill "${dsh_pid}" "${caddy_pid}" 2>/dev/null || true
+  [ -n "${SETUP_PROXY_PID}" ] && kill "${SETUP_PROXY_PID}" 2>/dev/null || true
 }
 trap cleanup INT TERM EXIT
 
