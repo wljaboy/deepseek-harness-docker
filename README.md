@@ -1,98 +1,145 @@
-# DeepSeek Harness Docker（NAS 一键安装版）
+# DeepSeek Harness Docker 快速部署版
 
-> **这是给普通用户的安装说明。** 用最简单的方式，把 DeepSeek Harness 装到你的 NAS 或电脑上。
-> **非官方项目**：本镜像是社区独立构建，与 DeepSeek（深度求索）官方没有隶属、合作或背书关系。镜像里的组件都来自官方发布渠道，部署壳为本项目原创。
+> **通用安装说明。** 用最简单的方式，把 DeepSeek Harness 装到你的设备上——NAS、Linux 服务器、云主机、普通电脑、Windows/WSL 都可以。
+> **非官方项目**：本镜像是社区独立构建，与 DeepSeek（深度求索）官方没有隶属、合作或背书关系。
 
 ## 这是什么
 
 DeepSeek Harness 是 DeepSeek 的一个**智能助手（AI Agent）**。你在浏览器里和它对话，它能在你的设备上替你**办事**——整理文件、查资料、写代码、跑脚本等。
 
-这个项目把 DeepSeek Harness 打包成一个**现成的 Docker 镜像**，你只需要：**下载 → 填几行配置 → 启动 → 浏览器打开**。
+本项目把它打包成一个**现成的 Docker 镜像**，你只需要：**拿镜像 → 填几行配置 → 启动 → 浏览器打开**。镜像名里的「**NAS**」只是作者的命名习惯，**不是只能用 NAS**。
 
 装好后自带：
 
-- **加密访问**：用自签名 HTTPS 证书，流量加密
+- **加密访问**：自签名 HTTPS 证书，流量加密
 - **登录保护**：需要账号密码才能使用
-- **数据保存**：升级 / 重启 / 迁移都不会丢账号和数据
-- **国内加速**：下载、更新都走国内镜像源，速度更快
+- **数据保存**：升级 / 重启 / 迁移都不丢账号和数据
+- **国内加速**：下载、更新走国内镜像源，更快
+
+## 运行环境要求（重要）
+
+| 项 | 说明 |
+| --- | --- |
+| 架构 | **x86_64（Intel/AMD）**。目前镜像只构建了 amd64，**ARM 设备暂不支持**（如 M 系列 Mac 的 Docker、ARM 版 NAS、树莓派）。 |
+| 系统 | 任何能跑 Docker 的 x86_64 系统：NAS、Linux 服务器、云主机、桌面 Linux、Windows + WSL 均可 |
+| 配置 | 建议 2 核、4G 内存以上 |
 
 ## 开始前，你需要准备
 
 | 需要 | 说明 |
 | --- | --- |
-| 设备 | 一台能跑 Docker 的设备（NAS 或 Linux 电脑 / 服务器），建议 2 核 4G 以上 |
+| 一台设备 | 见上方「运行环境要求」，NAS 或普通电脑都行 |
 | DeepSeek API Key | 到 [platform.deepseek.com](https://platform.deepseek.com) 注册，在「API Keys」页创建一个，复制这串 `sk-` 开头的密钥。它相当于 AI 干活的通行证 |
-| 一点点耐心 | 全程大约 5 分钟 |
+| 一点点耐心 | 全程约 5 分钟 |
 
-> **还没有 API Key？** 先点上面的链接去注册。注册、充值（按量服务）后创建密钥，复制保存好。
+> **还没有 API Key？** 点上面的链接去注册、充值（按量计费）后创建，复制保存。
 
 ## 目录
 
 **新手必读**
 
+- [获取镜像](#获取镜像)
 - [快速安装](#快速安装)
 - [首次使用](#首次使用)
-- [局域网访问](#局域网访问)
-- [更新与关闭](#更新与关闭)
 - [常见问题](#常见问题)
 
 **进阶可选**
 
 - [环境变量速查](#环境变量速查)
+- [局域网与公网访问](#局域网与公网访问)
 - [设置页本机打开配置 API Key](#设置页本机打开配置-api-key)
-- [公网访问](#公网访问)
+- [公网访问（Cloudflare Tunnel）](#公网访问cloudflare-tunnel)
 - [安全建议](#安全建议)
 - [一键本地构建](#一键本地构建)
 - [技术细节与许可证](#技术细节与许可证)
 
+## 获取镜像
+
+镜像已发布到 GitHub 容器仓库，任选一条命令拉取：
+
+- **大陆推荐（南大镜像加速，速度快）**：
+
+  ```bash
+  docker pull ghcr.nju.edu.cn/wljaboy/deepseek-harness-nas:latest
+  ```
+
+- **GitHub 直连**：
+
+  ```bash
+  docker pull ghcr.io/wljaboy/deepseek-harness-nas:latest
+  ```
+
+> **也可以不手动拉**：下面的 `docker compose up -d` 会自动拉取镜像，效果一样。
+
 ## 快速安装
 
-两种方式，结果一样。**方式一适合会一点点命令行的**，**方式二适合用 NAS 图形界面的**。
+两种方式，结果一样。**方式一适合会一点点命令行的**；**方式二适合用 NAS 图形界面的**。
 
-### 方式一：用命令行（推荐）
+### 方式一（推荐）：直接用镜像
 
-#### 第 1 步：下载项目文件
+**不需要 git clone、不需要下载源码**，只要 3 个小文件。
 
-在设备上打开终端。有 git 就运行：
+#### 第 1 步：新建一个文件夹
 
-```bash
-git clone https://github.com/wljaboy/deepseek-harness-docker.git
-cd deepseek-harness-docker
+随便在哪，新建一个文件夹（比如 `deepseek-harness`），进去。
+
+#### 第 2 步：新建 `docker-compose.yml`
+
+在里面新建一个文件，命名为 `docker-compose.yml`，粘贴下面的内容：
+
+```yaml
+services:
+  deepseek-harness:
+    image: ghcr.nju.edu.cn/wljaboy/deepseek-harness-nas:latest
+    container_name: deepseek-harness
+    restart: unless-stopped
+    shm_size: 1gb
+    ports:
+      - "8443:8443"
+      # 回环设置端口（可选，见文末「设置页本机打开」）；只绑定本机，不暴露公网
+      - "127.0.0.1:${DSH_SETUP_PORT:-18080}:${DSH_SETUP_PORT:-18080}"
+    environment:
+      HTTPS_ACCESS_HOST: "${HTTPS_ACCESS_HOST}"
+      DSH_PUBLIC_HOST: "${DSH_PUBLIC_HOST:-}"
+      DSH_SETUP_PORT: "${DSH_SETUP_PORT:-}"
+      DSH_AUTH_USERNAME: "${DSH_AUTH_USERNAME:-}"
+      DSH_AUTH_PASSWORD: "${DSH_AUTH_PASSWORD:-}"
+      DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
+      DSH_TELEMETRY_DISABLED: "1"
+    volumes:
+      - "${DSH_DATA_PATH}:/data/dsh"
+      - "${WORKSPACE_PATH}:/workspace"
 ```
 
-没有 git：去仓库页面点 **Code → Download ZIP**，下载后解压到任意目录，然后进入这个目录（`cd deepseek-harness-docker`）。
+#### 第 3 步：新建 `.env`
 
-#### 第 2 步：生成配置文件
-
-```bash
-cp .env.example .env
-```
-
-> 这会把示例配置复制为 `.env`。下面我们用编辑器打开 `.env` 填自己的信息。
-
-#### 第 3 步：填配置
-
-用记事本 / 文本编辑器打开 `.env`，只需要改这几行：
+再新建一个文件，命名为 `.env`，粘贴下面内容，并把 `你的IP` `你的密码` `你的密钥` 改成自己的：
 
 ```ini
-# 你的设备局域网 IP（例如 192.168.1.100；不知道怎么查，见下方小贴士）
+# 你的设备局域网 IP（如 192.168.1.100；不知道怎么查，见下方小贴士）
 HTTPS_ACCESS_HOST=192.168.1.100
+
+# 可选：公网域名（配合 Cloudflare Tunnel，让局域网和公网都能访问）
+# DSH_PUBLIC_HOST=your.domain.com
 
 # 登录用户名（随便取，如 admin）
 DSH_AUTH_USERNAME=admin
 
-# 登录密码（至少 12 位，请设置独立强密码）
+# 登录密码（至少 12 位，请设独立强密码）
 DSH_AUTH_PASSWORD=请改成你的强密码
 
 # DeepSeek 的 API Key（必填）
 DEEPSEEK_API_KEY=sk-你的密钥
 
-# 数据保存目录（改成你设备上的真实路径）
+# 数据保存目录（改成你设备上的真实绝对路径）
 DSH_DATA_PATH=/volume1/docker/deepseek-harness/data
 WORKSPACE_PATH=/volume1/docker/deepseek-harness/workspace
+
+# 可选：回环设置端口（想用网页配置 API Key 时用，见文末）
+# DSH_SETUP_PORT=18080
 ```
 
-> **小贴士：怎么查局域网 IP？** 在设备上打开终端，Linux 输 `ip addr`、Windows 输 `ipconfig`，找 `192.168.x.x` 那一行（很多设备也显示为 `192.168.1.x`）。
+> **小贴士：怎么查局域网 IP？** 在设备上打开终端，Linux 输 `ip addr`、Windows 输 `ipconfig`，找 `192.168.x.x` 那行。
 
 #### 第 4 步：启动
 
@@ -100,27 +147,36 @@ WORKSPACE_PATH=/volume1/docker/deepseek-harness/workspace
 docker compose up -d
 ```
 
-第一次会下载镜像，等 1～3 分钟。看到容器启动成功即可。
+第一次会自动拉取镜像并启动，等 1～3 分钟。
 
 #### 第 5 步：访问
 
 浏览器打开：**`https://你的局域网IP:8443`**（例如 `https://192.168.1.100:8443`）
 
-- 第一次会提示「证书不受信任」——**这是正常的**（设备自签名证书）。点「高级 → 继续前往你的IP」即可。
-- 用你在 `.env` 里设置的账号密码登录。
-- 进入后就可以开始用了。
+- 第一次会提示「证书不受信任」——**正常**（自签名证书）。点「高级 → 继续前往你的 IP」即可。
+- 用你 `.env` 里设置的账号密码登录。
+- 进入后即可使用。
 
 ### 方式二：NAS 图形界面（群晖 / 威联通）
 
-如果你是在群晖（Container Manager）或威联通（Container Station）上，可以**全程点点点**：
-
-1. 按方式一第 1 步下载项目文件，解压得到 `docker-compose.yml` 和 `.env.example`。
-2. 把 `.env.example` 复制一份改名为 `.env`，按上面的说明填写内容。
-3. 打开群晖 **Container Manager → 项目 → 新增**，或威联通 **Container Station → 应用程序 → 创建**，选择「导入」，选项目目录里的 `docker-compose.yml`。
+1. 把方式一第 2 步的 `docker-compose.yml` 内容复制下来。
+2. 打开群晖 **Container Manager → 项目 → 新增**，或威联通 **Container Station → 应用程序 → 创建**，粘贴这份「Compose / YAML」。
+3. 在界面里把 `HTTPS_ACCESS_HOST`、`DSH_AUTH_USERNAME`、`DSH_AUTH_PASSWORD`、`DEEPSEEK_API_KEY` 等填成你的值（或用 `.env`）。
 4. 点「应用 / 创建」，等它启动。
 5. 浏览器打开 `https://局域网IP:8443` 使用（同上）。
 
-> 不同机型菜单名称略有不同；找不到就在容器平台的「项目 / 应用程序」里找「导入 Compose / 导入 YAML」，选 `docker-compose.yml` 即可。
+> 不同机型菜单名不同；找不到就找「导入 Compose / 导入 YAML」。
+
+### 可选：用 git clone 拿项目副本（普通用户不需要）
+
+「快速安装」已经不需要 clone。`git clone` 仅供**想本地构建镜像、改默认配置、拿全部脚本**的进阶用户：
+
+```bash
+git clone https://github.com/wljaboy/deepseek-harness-docker.git
+cd deepseek-harness-docker
+```
+
+> 之后可用里面的 `scripts/build.sh` 自己构建（见文末「一键本地构建」）。
 
 ## 首次使用
 
@@ -135,9 +191,9 @@ docker compose up -d
 
 ### 配置模型 API Key
 
-**如果你已经按上面的方式在 `.env` 里填了 `DEEPSEEK_API_KEY`，这一步已经完成，直接跳过。**
+**如果你已按上面方式在 `.env` 里填了 `DEEPSEEK_API_KEY`，这一步已完成，直接跳过。**
 
-如果你是从局域网 IP（比如 `https://192.168.1.100:8443`）访问网页，可能会看到设置页提示：
+如果从局域网 IP（如 `https://192.168.1.100:8443`）访问网页，可能会看到设置页提示：
 
 > **settings are unavailable in this browser**
 
@@ -159,40 +215,16 @@ AI 就能用了。以后换模型也可以这样填（比如 `OPENAI_API_KEY=...
 
 > 想**在网页里**配置 API Key（更高级）？见[设置页本机打开配置 API Key](#设置页本机打开配置-api-key)，需要会用 SSH 端口转发，新手可以跳过。
 
-## 局域网访问
+## 局域网与公网访问
 
-在局域网内，浏览器访问 `https://你的局域网IP:8443` 即可（和上面「访问」一样）。
-
-> **想同时支持公网？** 在 `.env` 里多设一个 `DSH_PUBLIC_HOST=你的公网域名`（配合 Cloudflare Tunnel），局域网 IP 与公网域名就能**同时访问**。见[公网访问](#公网访问)。
-
-## 公网访问
-
-想在外面（不在家里）也能访问？需要**一个公网域名**和 Cloudflare 账号，用 Cloudflare Tunnel 做免费内网穿透。步骤稍多，放在[附录](#公网访问)里，新手可先跳过。
-
-## 更新与关闭
-
-### 更新到新版本
-
-```bash
-docker compose pull
-docker compose up -d
-```
-
-### 停止 / 关闭
-
-```bash
-docker compose down
-```
-
-### 数据会丢吗？
-
-不会。账号密码和配置都保存在你填的 `DSH_DATA_PATH` 目录里，升级、重启、重建都保留。
+- **局域网**：浏览器访问 `https://你的局域网IP:8443` 即可。
+- **同时支持公网**：在 `.env` 里多设一个 `DSH_PUBLIC_HOST=你的公网域名`（配合 Cloudflare Tunnel），局域网 IP 与公网域名就能**同时访问**。详见[公网访问（Cloudflare Tunnel）](#公网访问cloudflare-tunnel)。
 
 ## 常见问题
 
 ### 1. 打开显示「证书不受信任」？
 
-正常。这是设备自签名的加密证书。点「高级 → 继续前往你的IP/域名」即可。
+正常。这是设备自签名的加密证书。点「高级 → 继续前往你的 IP/域名」即可。
 
 ### 2. 页面空白或 502？
 
@@ -205,7 +237,7 @@ docker compose down
 
 ### 4. 网页一直没有反应 / 很慢？
 
-先看日志（在终端运行 `docker logs -f deepseek-harness`），正常应出现 `dsh web: http://127.0.0.1:3080`。如果这条没出现，稍等片刻或重启容器。
+先看日志（`docker logs -f deepseek-harness`），正常应出现 `dsh web: http://127.0.0.1:3080`。如果没出现，稍等或重启容器。
 
 ### 5. API Key 填了还是不能用？
 
@@ -237,7 +269,7 @@ docker compose down
 
 **为什么设置页打不开**：DeepSeek Harness 官方规定 DSH web 只能绑定 `127.0.0.1`，且设置/凭据等接口只在浏览器以**本机地址**（`127.0.0.1` / `localhost` / `[::1]`）打开时才开放（防止远程读取密钥）。所以我们从局域网 IP 访问时，设置页不开放。
 
-**解决办法**：本镜像内置一个「回环设置代理」，开辟一条只在本机可用的通道。你需要会用一点 SSH，步骤如下：
+**解决办法**：本镜像内置一个「回环设置代理」，开辟一条只在本机可用的通道。需要会用一点 SSH，步骤如下：
 
 1. 在 `.env` 里启用端口：
 
@@ -257,11 +289,11 @@ docker compose down
 
 5. 进入「设置 → 模型」添加提供方并粘贴 API Key。
 
-6. 配好后关闭 SSH 隧道窗口即可。之后正常用 `https://设备IP:8443` 对话即可（远程下设置页仍保持关闭，属官方行为）。
+6. 配好后关闭 SSH 隧道窗口即可。之后正常用 `https://设备IP:8443` 对话即可（远程下设置页仍属官方行为而关闭）。
 
-> ⚠️ 安全：这个端口在 docker 里已经固定只绑定宿主机 `127.0.0.1`，请**不要**把它改成 `0.0.0.0` 或映射到公网，否则等于绕过 DSH 的回环安全限制。
+> ⚠️ 安全：这个端口在 docker 里已固定只绑定宿主机 `127.0.0.1`，请**不要**改成 `0.0.0.0` 或映射到公网，否则等于绕过 DSH 的回环安全限制。
 
-## 公网访问
+## 公网访问（Cloudflare Tunnel）
 
 无公网 IP 或不想开放端口时，推荐用 Cloudflare Tunnel 免费内网穿透。
 
@@ -269,7 +301,7 @@ docker compose down
 
 ### 1. 加一个 cloudflared 容器
 
-在项目的 `docker-compose.yml` 里，`services:` 下追加：
+在你的 `docker-compose.yml` 里，`services:` 下追加：
 
 ```yaml
   cloudflared:
@@ -347,17 +379,17 @@ docker compose up -d        # compose 中 image 改为本地 tag
 | Caddy | 官方 GitHub Release（官方 checksums 双重校验） | Apache-2.0 |
 | 部署壳（HTTPS/登录/持久化） | 本仓库原创实现 | 见 LICENSE |
 
-### 拉取镜像
-
-已发布到 GitHub 容器仓库，任选其一：
-
-- 大陆推荐（南大镜像加速）：`docker pull ghcr.nju.edu.cn/wljaboy/deepseek-harness-nas:latest`
-- GitHub 直连：`docker pull ghcr.io/wljaboy/deepseek-harness-nas:latest`
-
 ### 数据保存目录
 
 - `${DSH_DATA_PATH}/data`：认证配置（`.dsh-auth.json`）与 DSH 数据
 - `${WORKSPACE_PATH}`：工作区
+
+### 更新镜像
+
+```bash
+docker compose pull
+docker compose up -d
+```
 
 ### 许可证与免责
 
