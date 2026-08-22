@@ -163,6 +163,8 @@ AI 就能用了。以后换模型也可以这样填（比如 `OPENAI_API_KEY=...
 
 在局域网内，浏览器访问 `https://你的局域网IP:8443` 即可（和上面「访问」一样）。
 
+> **想同时支持公网？** 在 `.env` 里多设一个 `DSH_PUBLIC_HOST=你的公网域名`（配合 Cloudflare Tunnel），局域网 IP 与公网域名就能**同时访问**。见[公网访问](#公网访问)。
+
 ## 公网访问
 
 想在外面（不在家里）也能访问？需要**一个公网域名**和 Cloudflare 账号，用 Cloudflare Tunnel 做免费内网穿透。步骤稍多，放在[附录](#公网访问)里，新手可先跳过。
@@ -219,7 +221,8 @@ docker compose down
 
 | 变量 | 必填 | 说明 |
 | --- | --- | --- |
-| `HTTPS_ACCESS_HOST` | 是 | 设备局域网 IP 或公网域名（纯域名，不带协议和端口） |
+| `HTTPS_ACCESS_HOST` | 是 | 设备局域网 IP（或公网域名，纯域名，不带协议和端口） |
+| `DSH_PUBLIC_HOST` | 否 | 可选公网域名（纯域名）；设置后局域网 IP 与公网域名同时可访问，配合 Cloudflare Tunnel 使用 |
 | `DEEPSEEK_API_KEY` | 否 | DeepSeek 的 API Key；填了即可直接用，无需进设置页 |
 | `DSH_AUTH_USERNAME` | 否 | 登录用户名（留空则首次访问时在网页上设置） |
 | `DSH_AUTH_PASSWORD` | 否 | 登录密码（留空则首次访问时在网页上设置，至少 12 位） |
@@ -280,10 +283,11 @@ docker compose down
 
 ### 2. 修改配置
 
-把 `.env` 里的 `HTTPS_ACCESS_HOST` 改成你的域名（纯域名，不带协议端口）：
+保持 `HTTPS_ACCESS_HOST` 为你的局域网 IP，再新增公网域名（纯域名，不带协议端口）：
 
 ```ini
-HTTPS_ACCESS_HOST=harness.yourdomain.com
+HTTPS_ACCESS_HOST=192.168.1.100
+DSH_PUBLIC_HOST=harness.yourdomain.com
 ```
 
 ### 3. 重启
@@ -307,7 +311,9 @@ docker compose up -d
 
 浏览器打开 `https://harness.yourdomain.com`，证书由 Cloudflare 提供，无自签名提示。
 
-**注意**：`HTTPS_ACCESS_HOST` 改成域名后，局域网 IP 直接访问可能会白屏（正常）。要局域网和公网同时可用，保持 `HTTPS_ACCESS_HOST` 为局域网 IP，并在隧道面板把 Host header 覆盖为这个 IP 的值。
+**效果**：局域网直接用 `https://局域网IP:8443`，公网用 `https://harness.yourdomain.com`，两者同时可用。因为 Caddy 已直接接受该域名 Host，**无需在 Cloudflare 面板覆盖 Host header**。
+
+> 若你之前是「把 `HTTPS_ACCESS_HOST` 改成域名、靠面板覆盖 Host」的老用法，现在改用 `HTTPS_ACCESS_HOST=局域网IP + DSH_PUBLIC_HOST=域名` 即可，更简单，且两者都通。
 
 ## 安全建议
 

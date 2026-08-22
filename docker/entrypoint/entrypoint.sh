@@ -55,6 +55,16 @@ else
   export DSH_AUTH_USERNAME=""
 fi
 
+# ---------- 公网域名（可选）：让局域网 IP 与公网域名同时可访问 ----------
+# HTTPS_ACCESS_HOST 仍是局域网 IP；若你有公网域名（经 Cloudflare Tunnel 等转发到本机），
+# 设置 DSH_PUBLIC_HOST 即可让 Caddy 同时接受该域名 Host，局域网与公网都能访问。
+# Caddyfile 用 DSH_EXTRA_HOSTS 拼出多 host 站点地址；留空则精确保持单 host（仅局域网 IP）。
+DSH_EXTRA_HOSTS=""
+if [ -n "${DSH_PUBLIC_HOST:-}" ]; then
+  DSH_EXTRA_HOSTS=", https://${DSH_PUBLIC_HOST}:8443"
+fi
+export DSH_EXTRA_HOSTS
+
 # ---------- 可选加速配置 ----------
 # 容器内 git clone GitHub 加速（设置 GH_PROXY 即启用，如 https://ghfast.top/；
 # 设为空则移除镜像内烘焙的代理规则，恢复直连——私有仓库 push 不受第三方代理影响）

@@ -15,6 +15,8 @@ services:
       - "127.0.0.1:${DSH_SETUP_PORT:-18080}:${DSH_SETUP_PORT:-18080}"
     environment:
       HTTPS_ACCESS_HOST: "${HTTPS_ACCESS_HOST}"
+      # 可选：公网域名（纯域名），让局域网 IP 与公网域名同时可访问；留空仅局域网
+      DSH_PUBLIC_HOST: "${DSH_PUBLIC_HOST:-}"
       # 回环设置代理启用开关：留空=关闭；设为端口号（如 18080）即启用。
       DSH_SETUP_PORT: "${DSH_SETUP_PORT:-}"
       # 登录用户名/密码（可选）：不设置则首次访问时在网页上自行设置

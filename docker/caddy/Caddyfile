@@ -16,7 +16,9 @@
     skip_install_trust
 }
 
-https://{$HTTPS_ACCESS_HOST}:8443 {
+https://{$HTTPS_ACCESS_HOST}:8443{$DSH_EXTRA_HOSTS} {
+    # 若设置了 DSH_PUBLIC_HOST，入口脚本会把 DSH_EXTRA_HOSTS 拼为 ", https://<公网域名>:8443"，
+    # 从而让局域网 IP 与公网域名同时可访问；留空则精确保持单 host（仅局域网 IP）。
     # 内部自签名证书，无需申请公网证书
     tls internal
     # 响应压缩

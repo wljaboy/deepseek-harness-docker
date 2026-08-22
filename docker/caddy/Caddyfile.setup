@@ -8,7 +8,8 @@
     skip_install_trust
 }
 
-https://{$HTTPS_ACCESS_HOST}:8443 {
+https://{$HTTPS_ACCESS_HOST}:8443{$DSH_EXTRA_HOSTS} {
+    # 公网域名支持同上：DSH_EXTRA_HOSTS 由入口脚本按 DSH_PUBLIC_HOST 拼出。
     tls internal
     encode zstd gzip
 
