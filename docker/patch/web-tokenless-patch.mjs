@@ -21,6 +21,15 @@
 //   dsh 为 npm 预发布（alpha/rc），官方改动代码后本补丁必须同步跟进。
 //   匹配失败时本工具以非零退出，docker build 直接失败——绝不静默产出未打补丁的镜像。
 //
+// 补丁不变式（自动自检，勿删）：
+//   apply 写入后必须同时满足：
+//     1) 官方短路行 `if (this.isAuthenticated(req)) return true;` 恰好保留 1 处；
+//     2) 且其位置在自动签发块（MARKER 注释）之前。
+//   历史教训（v1→v2）：v1 用整体替换尾段时误删了该短路行，导致每个已带有效会话
+//   Cookie 的首页请求仍被当作未认证，反复重签 Cookie + 303 -> "/"，浏览器报
+//   ERR_TOO_MANY_REDIRECTS。回归判据：带 Cookie 的第二次 GET / 必须返回 200
+//   （而非 303）。自检在写入前执行，不满足即抛错中止，避免同类事故复发。
+//
 // 用法（docker build 时由 Dockerfile 调用；容器内亦可手工执行）：
 //   node /opt/dsh-web-tokenless/apply.mjs apply     # 打补丁（幂等，失败即退出非零）
 //   node /opt/dsh-web-tokenless/apply.mjs status    # patched / pristine / 目标缺失
@@ -136,11 +145,39 @@ function assertIdentifiers(src) {
   }
 }
 
+const SHORT_CIRCUIT = "if (this.isAuthenticated(req)) return true;";
+const V1_MARKER = "// [dsh-nas patch] Auto-grant loopback-Host index requests";
+
+// 补丁不变式自检（v2.1）：见文件头「补丁不变式」注释。写入前对产物字符串校验，
+// 防止未来修改补丁时再次删掉官方短路行（v1 事故）导致无限 303 重定向。
+function assertPatchInvariant(patched) {
+  const count = patched.split(SHORT_CIRCUIT).length - 1;
+  if (count !== 1) {
+    throw new Error(
+      `补丁不变式校验失败：官方短路行 \`${SHORT_CIRCUIT}\` 出现 ${String(count)} 次（应为恰好 1 次）。\n` +
+      `历史教训：v1 版整体替换尾段误删该行导致每个首页请求都被当未认证，反复重签 cookie + 303，` +
+      `浏览器报 ERR_TOO_MANY_REDIRECTS。请保留该短路行（位于注入块之前）。未写入任何修改。`
+    );
+  }
+  const scIndex = patched.indexOf(SHORT_CIRCUIT);
+  const markerIndex = patched.indexOf(MARKER);
+  if (markerIndex === -1 || scIndex > markerIndex) {
+    throw new Error(
+      `补丁不变式校验失败：短路行必须在自动签发块（${MARKER}）之前。未写入任何修改。`
+    );
+  }
+}
+
 function doApply(target, version) {
   const src = readFileSync(target, "utf8");
   if (src.includes(MARKER)) {
     console.log(`[web-tokenless] 已打过补丁（幂等跳过）: ${target}`);
     return;
+  }
+  if (src.includes(V1_MARKER) && !src.includes(MARKER)) {
+    throw new Error(
+      `检测到 v1 旧版补丁残留（${target}）。v2 无法原位升级：请先执行 restore 还原官方原版，再重新 apply。`
+    );
   }
   assertIdentifiers(src);
   const match = TAIL_RE.exec(src);
@@ -160,6 +197,7 @@ function doApply(target, version) {
     `${indent}if (this.isAuthenticated(req)) return true;\n` +
     indentBlock(indent) +
     src.slice(end);
+  assertPatchInvariant(patched); // 写入前自检（短路保留且位于注入块之前）
 
   // 首次 apply 时在旁边留一份官方原版快照，供 restore 使用
   const snapshot = `${target}.pristine`;

@@ -407,9 +407,10 @@ docker compose down
 - 若你仍看到该提示：多为旧镜像或自行改动所致。临时办法是把启动日志里那行
   `dsh web: http://.../?token=xxx` 的**完整地址**粘到浏览器打开一次，该设备即被记住。
 - 给镜像做二次开发时，补丁代码在 `docker/patch/web-tokenless-patch.mjs`，构建期由
-  Dockerfile 自动执行（幂等 + 语法自检）。官方 dsh 改动代码导致无法匹配时，构建会
-  **显式失败**而不是静默产出未打补丁的镜像——此时按报错提示更新该补丁即可；想临时
-  去掉补丁，删除 Dockerfile 中对应的 `COPY` / `RUN` 两行即可。
+  Dockerfile 自动执行（幂等 + 语法自检 + 结构自检）。官方 dsh 改动代码导致无法匹配时，
+  构建会**显式失败**而不是静默产出未打补丁的镜像——此时按报错提示更新该补丁即可；想临时
+  去掉补丁，删除 Dockerfile 中对应的 `COPY` / `RUN` 两行即可。补丁设计、事故复盘与维护
+  指引见 `docs/web-tokenless-patch-notes.md`。
 
 ---
 
