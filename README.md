@@ -236,6 +236,10 @@ AI 就能用了。以后换模型也可以这样填（比如 `OPENAI_API_KEY=...
 
 浏览器访问 `https://你的局域网IP:8443` 即可（和上面「访问」一样）。
 
+**新设备免 token 直达**：登录（Basic Auth）后直接进入界面，**不需要**再去复制
+dsh web 启动时打印的 `?token=...` 链接——从 0.1.2-alpha.5 / 0.1.2-rc.1 起，本镜像
+内置了「免 token 首访」补丁（详见 [常见问题 7](#7-打开提示-dsh-web-authentication-requiredreopen-the-url-printed-by-dsh-web)）。
+
 ### 公网访问（Cloudflare Tunnel）
 
 想在外面（不在家里）也能访问？在 `.env` 里多设一个 `DSH_PUBLIC_HOST`（你的公网域名），配合 Cloudflare Tunnel 就能让**局域网 IP 与公网域名同时访问**。
@@ -387,6 +391,22 @@ docker compose down
 ### 6. 换了 DeepSeek 之外的模型？
 
 在 `.env` 里补上对应 Key（如 `OPENAI_API_KEY=...`）并重启。
+
+### 7. 打开提示 dsh web authentication required; reopen the URL printed by dsh web？
+
+这是 **dsh web 官方自带**的「新设备 token 校验」：它要求每个新设备首次访问首页时，
+网址里带一次 dsh web 启动时打印的 `?token=...`（只拦第一下，之后该设备浏览器会记住）。
+
+- **用最新版本镜像（0.1.2-alpha.5 / 0.1.2-rc.1 起）不会遇到**：镜像已内置
+  「免 token 首访」补丁——因为本部署入口已经有 Caddy 登录（Basic Auth），这一层
+  设备 token 属于多余摩擦。补丁只对经 Caddy 转发（Host 为回环地址）的请求自动放行，
+  直连/公网主机名仍要求 token，`/api` 仍校验会话 Cookie，**安全边界不变**。
+- 若你仍看到该提示：多为旧镜像或自行改动所致。临时办法是把启动日志里那行
+  `dsh web: http://.../?token=xxx` 的**完整地址**粘到浏览器打开一次，该设备即被记住。
+- 给镜像做二次开发时，补丁代码在 `docker/patch/web-tokenless-patch.mjs`，构建期由
+  Dockerfile 自动执行（幂等 + 语法自检）。官方 dsh 改动代码导致无法匹配时，构建会
+  **显式失败**而不是静默产出未打补丁的镜像——此时按报错提示更新该补丁即可；想临时
+  去掉补丁，删除 Dockerfile 中对应的 `COPY` / `RUN` 两行即可。
 
 ---
 

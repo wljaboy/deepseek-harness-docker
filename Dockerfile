@@ -11,6 +11,9 @@
 #   - pip 国内镜像源（清华 PyPI）
 #   - git clone GitHub 加速（可选，通过 GH_PROXY 环境变量开启）
 #   - 构建产物直接 docker load 使用，无需访问 Docker Hub
+#   - dsh web「新设备免 token 首访」：Caddy 登录（Basic Auth）后直达 GUI，
+#     无需再带 dsh web 启动 token（原理见 docker/patch/web-tokenless-patch.mjs；
+#     构建期硬校验，官方 dsh 代码变动时构建会显式失败而非静默跳过）
 # ============================================================
 
 # ---- 构建参数（构建时可用 --build-arg 覆盖）----
@@ -86,6 +89,15 @@ RUN npm install --global --no-audit --no-fund "@deepseek-ai/dsh@${DSH_VERSION}" 
 
 # ---- 4.5 pnpm（dsh 插件 / 插件市场 dshmarket 的管理依赖）----
 RUN npm install --global --no-audit --no-fund pnpm
+
+# ---- 4.6 dsh web「新设备免 token 首访」补丁（本仓库原创）----
+# 背景：dsh web 要求每个新设备首次访问首页带启动 token（?token=...），否则 401。
+# 本部署入口已有 Caddy HTTPS + Basic Auth（docker/caddy/Caddyfile 把 Host 改写为
+# 127.0.0.1:3080），该 token 层为多余摩擦。补丁使回环 Host 的首页请求自动签发
+# 会话 Cookie（等效 ?token= 交换），非回环 Host 仍要求 token，安全边界不变。
+# 放在所有 npm 安装之后执行；脚本自带幂等 + 语法自检，官方代码变动时构建显式失败。
+COPY docker/patch/web-tokenless-patch.mjs /opt/dsh-web-tokenless/apply.mjs
+RUN node /opt/dsh-web-tokenless/apply.mjs apply
 
 # ---- 5. Caddy 反向代理（HTTPS + 登录保护）----
 # 优先使用构建上下文 docker/caddy/caddy（官方 2.10.2 静态二进制，由 build.sh 自动提取）
