@@ -36,7 +36,7 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 
 const require = createRequire(import.meta.url);
-const MARKER = "// [dsh-nas patch] Auto-grant loopback-Host index requests";
+const MARKER = "// [dsh-nas patch v2] Auto-grant loopback-Host index requests";
 
 // authorizeIndex 无 token 分支的尾段（语义锚点）。命中后在其后插入自动签发块。
 // 格式容错：允许任意 [ \t]* 缩进（当前官方包为两个制表符；未来重排为空格也能命中）。
@@ -59,12 +59,15 @@ const REQUIRED_IDENTIFIERS = [
 function indentBlock(indent) {
   const i = indent; // 尾部 if 所在行的缩进（如两个制表符）
   return (
-    `${i}// [dsh-nas patch] Auto-grant loopback-Host index requests: clients that\n` +
+    `${i}// [dsh-nas patch v2] Auto-grant loopback-Host index requests: clients that\n` +
     `${i}// reach this server through the deployment TLS reverse proxy (Host\n` +
     `${i}// rewritten to 127.0.0.1:3080) get the same authority-bound session\n` +
     `${i}// cookie a valid ?token= exchange would mint, then a redirect to clean\n` +
     `${i}// /. Non-loopback authorities still require the launch token, so the\n` +
     `${i}// browser-session fence is unchanged for direct/public hosts.\n` +
+    `${i}// v2 fix: the original patch dropped the isAuthenticated short-circuit,\n` +
+    `${i}// causing an endless 303 -> / loop for every index request; the\n` +
+    `${i}// authenticated-return-true check is now preserved above this block.\n` +
     `${i}const loopbackAuthority = requestAuthority(req.headers);\n` +
     `${i}const loopbackUrl = loopbackAuthority === void 0 ? void 0 : new URL(\`http://\${loopbackAuthority}\`);\n` +
     `${i}if (loopbackUrl !== void 0 && isLoopbackHostname(loopbackUrl.hostname)) {\n` +
@@ -150,7 +153,13 @@ function doApply(target, version) {
   const indent = match[1];
   const start = match.index + 1; // 保留开头的换行
   const end = match.index + match[0].length;
-  const patched = src.slice(0, start) + indentBlock(indent) + src.slice(end);
+  // v2 fix: 先保留官方“已有有效会话 cookie 即放行”的短路，再注入回环自动签发块。
+  // 旧版补丁把这一行一起替换掉了，导致每次请求都重签 cookie + 303，形成无限重定向。
+  const patched =
+    src.slice(0, start) +
+    `${indent}if (this.isAuthenticated(req)) return true;\n` +
+    indentBlock(indent) +
+    src.slice(end);
 
   // 首次 apply 时在旁边留一份官方原版快照，供 restore 使用
   const snapshot = `${target}.pristine`;
