@@ -294,6 +294,9 @@ docker compose up -d
 
 > 💡 若你之前是「把 `HTTPS_ACCESS_HOST` 改成域名、靠面板覆盖 Host」的老用法，现在改用 `HTTPS_ACCESS_HOST=局域网IP + DSH_PUBLIC_HOST=域名` 即可，更简单，且两者都通。
 
+> 🔗 **进阶：不想依赖局域网 IP？** 若你的 cloudflared 与本容器在同一 Docker 网络，面板可直接写容器 service 名（`https://<容器名>:8443`），宿主 IP 变化也不断公网。含端口/SNI/免 token 等三个实测坑的完整排障，见
+> [docs/cloudflare-tunnel-service-name.md](docs/cloudflare-tunnel-service-name.md)。
+
 ---
 
 ## 🔧 进阶
