@@ -39,6 +39,10 @@ FROM ${NODE_IMAGE}
 ARG DSH_VERSION
 ARG APT_MIRROR
 ARG NPM_REGISTRY
+# 运行期 npm 默认源：必须像上方其它 ARG 一样在 FROM 之后重新声明，
+# 否则下面 ENV NPM_CONFIG_REGISTRY=${RUNTIME_NPM_REGISTRY} 会取到空值
+# （buildx 报 UndefinedVar 告警，容器内 npm 实际不走国内源）。
+ARG RUNTIME_NPM_REGISTRY
 ARG PIP_MIRROR
 ARG GH_PROXY
 
