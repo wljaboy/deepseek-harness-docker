@@ -17,6 +17,13 @@
 //     /api 仍需会话 Cookie（首访自动获得）；Caddy Basic Auth 不变。
 //   - 老设备已存的 Cookie 仍有效（签名密钥持久化，重启不丢）。
 //
+// 版本适配记录：
+//   v1/v2 → dsh 0.1.x：requestAuthority(req.headers)
+//   v3    → dsh 0.2.x：requestAudience(req.headers, secure)；
+//           authorizeIndex/isAuthenticated 增加 secure 形参；
+//           sessionCookie 增加第 5 个实参 secure；
+//           无 token 分支的 303 目标由 "/" 改为目录相对 "./"。
+//
 // 设计原则：构建期硬校验（fail loud）。
 //   dsh 为 npm 预发布（alpha/rc），官方改动代码后本补丁必须同步跟进。
 //   匹配失败时本工具以非零退出，docker build 直接失败——绝不静默产出未打补丁的镜像。
@@ -45,16 +52,16 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 
 const require = createRequire(import.meta.url);
-const MARKER = "// [dsh-nas patch v2] Auto-grant loopback-Host index requests";
+const MARKER = "// [dsh-nas patch v3] Auto-grant loopback-Host index requests";
 
 // authorizeIndex 无 token 分支的尾段（语义锚点）。命中后在其后插入自动签发块。
 // 格式容错：允许任意 [ \t]* 缩进（当前官方包为两个制表符；未来重排为空格也能命中）。
-const TAIL_RE = /\n([ \t]*)if \(this\.isAuthenticated\(req\)\) return true;\n[ \t]*this\.writeUnauthorized\(req, res\);\n[ \t]*return false;/u;
+const TAIL_RE = /\n([ \t]*)if \(this\.isAuthenticated\(req, secure\)\) return true;\n[ \t]*this\.writeUnauthorized\(req, res\);\n[ \t]*return false;/u;
 
 // 插入的代码块依赖这些标识符（均在同一 bundle 内定义）。改名/移除则视为官方大改，报错。
 const REQUIRED_IDENTIFIERS = [
   "authorizeIndex",
-  "requestAuthority",
+  "requestAudience",
   "isLoopbackHostname",
   "isAuthenticated",
   "writeUnauthorized",
@@ -68,7 +75,7 @@ const REQUIRED_IDENTIFIERS = [
 function indentBlock(indent) {
   const i = indent; // 尾部 if 所在行的缩进（如两个制表符）
   return (
-    `${i}// [dsh-nas patch v2] Auto-grant loopback-Host index requests: clients that\n` +
+    `${i}// [dsh-nas patch v3] Auto-grant loopback-Host index requests: clients that\n` +
     `${i}// reach this server through the deployment TLS reverse proxy (Host\n` +
     `${i}// rewritten to 127.0.0.1:3080) get the same authority-bound session\n` +
     `${i}// cookie a valid ?token= exchange would mint, then a redirect to clean\n` +
@@ -77,7 +84,9 @@ function indentBlock(indent) {
     `${i}// v2 fix: the original patch dropped the isAuthenticated short-circuit,\n` +
     `${i}// causing an endless 303 -> / loop for every index request; the\n` +
     `${i}// authenticated-return-true check is now preserved above this block.\n` +
-    `${i}const loopbackAuthority = requestAuthority(req.headers);\n` +
+    `${i}// v3: adapted to dsh 0.2.x — requestAudience(req.headers, secure),\n` +
+    `${i}// secured session cookie, directory-relative clean redirect.\n` +
+    `${i}const loopbackAuthority = requestAudience(req.headers, secure);\n` +
     `${i}const loopbackUrl = loopbackAuthority === void 0 ? void 0 : new URL(\`http://\${loopbackAuthority}\`);\n` +
     `${i}if (loopbackUrl !== void 0 && isLoopbackHostname(loopbackUrl.hostname)) {\n` +
     `${i}\tconst issuedAt = Date.now();\n` +
@@ -90,9 +99,9 @@ function indentBlock(indent) {
     `${i}\t}, this.secret);\n` +
     `${i}\tres.writeHead(303, {\n` +
     `${i}\t\t"cache-control": "no-store",\n` +
-    `${i}\t\t"location": "/",\n` +
+    `${i}\t\t"location": "./",\n` +
     `${i}\t\t"referrer-policy": "no-referrer",\n` +
-    `${i}\t\t"set-cookie": sessionCookie(cookieName(loopbackAuthority), value, expiresAt, Math.floor(this.maxAgeMilliseconds / 1e3))\n` +
+    `${i}\t\t"set-cookie": sessionCookie(cookieName(loopbackAuthority), value, expiresAt, Math.floor(this.maxAgeMilliseconds / 1e3), secure)\n` +
     `${i}\t});\n` +
     `${i}\tres.end();\n` +
     `${i}\treturn false;\n` +
